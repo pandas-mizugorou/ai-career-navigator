@@ -1,0 +1,6 @@
+# 検証・開発用の一時ファイル（公開しない）
+_serve.js
+mobile-check.png
+verify.png
+.playwright-mcp/
+*.log

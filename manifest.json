@@ -1,0 +1,19 @@
+{
+  "name": "AI/データサイエンス転職ナビ",
+  "short_name": "転職ナビ",
+  "description": "AI/データサイエンス人材の想定年収と転職先を診断（日本国内市場・出典つき）",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0b1020",
+  "theme_color": "#0b1020",
+  "lang": "ja",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%230b1020'/%3E%3Ctext x='96' y='132' font-size='104' text-anchor='middle' fill='%2336d399' font-family='sans-serif' font-weight='bold'%3E%C2%A5%3C/text%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
