@@ -93,6 +93,7 @@
   .chip{user-select:none;cursor:pointer;background:var(--chip);border:1px solid var(--line);
     color:var(--sub);padding:7px 12px;border-radius:999px;font-size:12.5px;font-weight:600;transition:.15s}
   .chip[data-on="1"]{background:rgba(91,140,255,.18);border-color:var(--accent);color:#dbe6ff}
+  .chip[data-on="1"]::before{content:"✓";font-weight:900;margin-right:3px;color:var(--accent2)}  /* 色に頼らない選択状態 */
   .chip small{opacity:.6;font-weight:700;margin-left:4px}
   .hint{font-size:11.5px;color:#8b96bd;margin-top:6px}
   /* 初期例ラベル（未操作時のみ表示）と推定開示文 */
@@ -108,8 +109,24 @@
   .headline .sub{color:var(--sub);font-size:14px}
   .bar{position:relative;height:46px;background:var(--panel2);border-radius:12px;margin:18px 0 6px;overflow:hidden;border:1px solid var(--line)}
   .bar .scale{position:absolute;inset:0;display:flex;justify-content:space-between;padding:0 10px;align-items:flex-end;font-size:10px;color:var(--sub)}
-  .bar .fill{position:absolute;top:0;bottom:0;background:var(--grad);opacity:.85;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800;color:#06122a;font-size:13px;transition:.4s}
-  .markrow{display:flex;justify-content:space-between;font-size:11px;color:var(--sub);margin-top:2px}
+  .bar .fill{position:absolute;top:0;bottom:0;background:var(--grad);opacity:.8;border-radius:10px;transition:.4s}
+  .bar .btick{position:absolute;top:0;bottom:0;width:2px;background:rgba(232,237,255,.22);z-index:2}
+  .bar .midmark{position:absolute;top:0;bottom:0;width:2px;background:var(--ink);transform:translateX(-50%);z-index:4;box-shadow:0 0 6px rgba(0,0,0,.55);transition:left .4s}
+  .bar .midmark::after{content:"▼";position:absolute;top:1px;left:50%;transform:translateX(-50%);font-size:9px;color:var(--ink);line-height:1}
+  .markrow{display:flex;justify-content:space-between;gap:10px;font-size:11px;color:var(--sub);margin-top:2px;flex-wrap:wrap}
+  /* 変化フィードバック */
+  @keyframes flashglow{0%{filter:drop-shadow(0 0 18px rgba(54,211,153,.35))}35%{filter:drop-shadow(0 0 32px rgba(54,211,153,.9))}100%{filter:drop-shadow(0 0 18px rgba(54,211,153,.35))}}
+  .bigfig.flash{animation:flashglow .55s ease}
+  .up-arrow{color:var(--accent2);font-weight:900;margin-right:3px}
+  .down-arrow{color:var(--warn);font-weight:900;margin-right:3px}
+  @media(prefers-reduced-motion:reduce){.bigfig.flash{animation:none}}
+  /* 「あなたの次の一手」統合ブロック */
+  .nextmove{background:linear-gradient(160deg,rgba(91,140,255,.13),rgba(54,211,153,.10));border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:14px}
+  .nextmove .nm-head{font-size:11px;color:var(--sub);font-weight:800;letter-spacing:.04em;margin-bottom:6px}
+  .nextmove .nm-step{display:flex;gap:10px;align-items:flex-start;padding:4px 0}
+  .nextmove .nm-num{flex:0 0 auto;width:21px;height:21px;border-radius:50%;background:var(--grad);color:#06122a;font-weight:900;font-size:12px;display:flex;align-items:center;justify-content:center}
+  .nextmove .nm-amt{color:var(--accent2);font-weight:800;margin-left:8px;white-space:nowrap;font-size:12.5px}
+  .nextmove b{color:#dbe6ff}
 
   table{width:100%;border-collapse:collapse;font-size:13px}
   th,td{text-align:left;padding:12px 8px;border-bottom:1px solid var(--line);vertical-align:top}
@@ -118,15 +135,16 @@
   tr.toprow{box-shadow:inset 3px 0 0 var(--accent2)}
   td.sal{font-weight:800;color:#dbe6ff;white-space:nowrap}
   td.mkt{color:var(--sub);font-weight:600}
-  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:800}
+  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:800;white-space:nowrap}
   .fit-high{background:rgba(54,211,153,.18);color:#7ef0c2}
   .fit-mid{background:rgba(247,185,85,.18);color:#ffd58a}
   .fit-low{background:rgba(240,104,104,.16);color:#ffadad}
   td .ex{color:var(--sub);font-size:11.5px}
+  td.cell-name .ex{display:block;margin-top:3px}  /* 企業名と説明文を改行で分離（デスクトップ） */
   td .sal{font-weight:800;color:#dbe6ff;white-space:nowrap}
 
   /* provenance badge（button化：タップ/クリックでポップ） */
-  .src-badge{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;font-family:inherit;color:var(--ink);
+  .src-badge{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;font-family:inherit;color:var(--ink);white-space:nowrap;
     border:1px solid var(--line);border-radius:999px;padding:2px 9px;background:var(--panel2);text-decoration:none;cursor:pointer;line-height:1.5}
   .src-badge .tdot{width:7px;height:7px;border-radius:50%}
   .src-badge .tmark{font-size:11px;font-weight:900;line-height:1}
@@ -213,8 +231,8 @@
         <option value="adjacent">隣接職（SE・企画など）からの挑戦</option>
       </select>
 
-      <label class="fld">スキル・強み（当てはまるものをタップ）</label>
-      <div class="chips" id="skills"></div>
+      <label class="fld" id="skills-label">スキル・強み（当てはまるものをタップ・複数選択可）</label>
+      <div class="chips" id="skills" role="group" aria-labelledby="skills-label"></div>
       <div class="hint">※加点幅は「本ツール推定」です。下部「データの信頼性について」を必ずご確認ください。</div>
 
       <label class="fld" for="pref">転職の志向</label>
@@ -244,9 +262,11 @@
         <div class="examplenote" id="examplenote">※ これは「経験7年・生成AI職・主要スキル4つ」を仮置きした<b>初期例</b>です。左の入力をあなたの状況に変えてください。</div>
         <div class="bar">
           <div class="fill" id="fill" style="left:20%;width:30%" aria-hidden="true"></div>
-          <div class="scale"><span>300</span><span>500</span><span>700</span><span>900</span><span>1100</span><span>1300+</span></div>
+          <div id="benchticks" aria-hidden="true"></div>
+          <div class="midmark" id="midmark" style="left:50%" aria-hidden="true"></div>
+          <div class="scale" id="scale" aria-hidden="true"></div>
         </div>
-        <div class="markrow"><span>単位：万円（理論年収ベース・本ツール推定）</span><span id="posnote"></span></div>
+        <div class="markrow"><span>単位：万円。帯＝想定レンジ／<b style="color:var(--ink)">▼</b>＝あなたの中央値／縦線＝職種別の市場平均</span><span id="posnote"></span></div>
         <div class="hint" id="benchline" style="margin-top:10px"></div>
       </div>
 
@@ -315,7 +335,16 @@ function tierBadgeInline(tierKey,date){
 }
 
 const sel = {exp:7, role:'genai', pref:'balance', skills:new Set()};
-let touched = false;   // ユーザーが入力を操作したか（初期例ラベルの表示制御）
+let touched = false;        // ユーザーが入力を操作したか（初期例ラベルの表示制御）
+let prevMid=null, prevPrem=null;  // 変化フィードバック用の前回値
+
+// スキルチップの状態を data-on / aria-pressed / sel.skills の3つで同期
+function setChip(c,on){
+  c.dataset.on = on?'1':'0';
+  c.setAttribute('aria-pressed', on?'true':'false');
+  on ? sel.skills.add(c.dataset.k) : sel.skills.delete(c.dataset.k);
+}
+function toggleChip(c){ setChip(c, c.getAttribute('aria-pressed')!=='true'); touched=true; render(); }
 const skillMeta = {
   genai:{label:'生成AI/LLM実務',icon:'🤖',advice:'プロンプトを超えたアプリ実装・評価の実務を職務経歴に明記。最も単価差が大きい領域。'},
   agent:{label:'RAG/AIエージェント実装',icon:'🧩',advice:'RAG構築・エージェント設計の実装を1件作る。2026年の最頻出求人スキル。'},
@@ -338,13 +367,16 @@ function boot(){
   $('badge-model').innerHTML='';
   $('badge-model').outerHTML=tierBadgeInline('tool');
 
-  // skill chips from model.skillPrem
-  $('skills').innerHTML=Object.keys(D.model.skillPrem).map(k=>
-    `<span class="chip" data-k="${k}">${skillMeta[k].label} <small>+${Math.round(D.model.skillPrem[k]*100)}%</small></span>`).join('');
+  // skill chips from model.skillPrem（role=button・キーボード操作・aria-pressed 対応）
+  $('skills').innerHTML=Object.keys(D.model.skillPrem).map(k=>{
+    const pct=Math.round(D.model.skillPrem[k]*100);
+    return `<span class="chip" role="button" tabindex="0" aria-pressed="false" data-k="${k}" aria-label="${skillMeta[k].label}（年収加点 プラス${pct}パーセント・本ツール推定）">${skillMeta[k].label} <small>+${pct}%</small></span>`;
+  }).join('');
   document.querySelectorAll('#skills .chip').forEach(c=>{
-    c.addEventListener('click',()=>{const k=c.dataset.k,on=c.dataset.on==='1';c.dataset.on=on?'0':'1';on?sel.skills.delete(k):sel.skills.add(k);touched=true;render();});
+    c.addEventListener('click',()=>toggleChip(c));
+    c.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){ e.preventDefault(); toggleChip(c); } });
   });
-  ['genai','biz','comm','agent'].forEach(k=>{const c=document.querySelector(`#skills .chip[data-k="${k}"]`);if(c){c.dataset.on='1';sel.skills.add(k);}});
+  ['genai','biz','comm','agent'].forEach(k=>{const c=document.querySelector(`#skills .chip[data-k="${k}"]`);if(c) setChip(c,true);});
 
   $('exp').addEventListener('input',e=>{sel.exp=+e.target.value;$('expv').textContent=sel.exp+(sel.exp>=20?'年+':'年');e.target.setAttribute('aria-valuetext',sel.exp>=20?'20年以上':sel.exp+'年');touched=true;render();});
   $('role').addEventListener('change',e=>{sel.role=e.target.value;touched=true;render();});
@@ -353,6 +385,7 @@ function boot(){
   // benchmark line
   $('benchline').innerHTML='参考平均： '+D.benchmarks.map(b=>
     `${b.role} <b style="color:#dbe6ff">${b.avg}万</b> ${srcBadge(b.srcId)}`).join(' ・ ');
+  // ※ 年収バーの目盛り・市場平均ティックはスケールが入力で動くため render() 内で描画
 
   // hot skills
   $('hotskills').innerHTML='需要が高いスキル： '+D.hotSkills.list.map(t=>`<span class="tag">${t}</span>`).join('')+' '+srcBadge(D.hotSkills.srcId);
@@ -394,13 +427,32 @@ function personalRange(){
 }
 function render(){
   const {lo,mid,hi,prem}=personalRange();
-  $('salmid').innerHTML=fmt(mid)+'<span class="unit">万円</span>';
+  const smid=$('salmid');
+  smid.innerHTML=fmt(mid)+'<span class="unit">万円</span>';
   $('salrange').textContent='想定レンジ '+fmt(lo)+'〜'+fmt(hi)+'万円 / 年';
   $('examplenote').style.display = touched ? 'none' : '';
-  const toPct=v=>Math.max(0,Math.min(100,(v-300)/1000*100));
+  // 変化フィードバック：中央値が動いたら一瞬発光
+  if(prevMid!==null && Math.round(mid)!==Math.round(prevMid)){
+    smid.classList.remove('flash'); void smid.offsetWidth; smid.classList.add('flash');
+  }
+  // 年収バーのスケールは入力で動く（高年収でも上限に張り付かないよう hi に合わせて拡張）
+  const SMIN=300, SMAX = hi<=1300 ? 1300 : Math.min(2500, Math.ceil(hi/100)*100);
+  const toPct=v=>Math.max(0,Math.min(100,(v-SMIN)/(SMAX-SMIN)*100));
+  const step=(SMAX-SMIN)/5;
+  $('scale').innerHTML=Array.from({length:6},(_,i)=>{
+    const val=SMIN+i*step, plus=(i===5 && SMAX>=2500 && hi>2500)?'+':'';
+    return `<span>${Math.round(val)}${plus}</span>`;
+  }).join('');
+  $('benchticks').innerHTML=D.benchmarks.map(b=>
+    `<span class="btick" style="left:${toPct(b.avg)}%" title="${b.role} 市場平均 ${b.avg}万"></span>`).join('');
   const l=toPct(lo), w=Math.max(6,toPct(hi)-toPct(lo));
-  const f=$('fill'); f.style.left=l+'%'; f.style.width=w+'%'; f.textContent=fmt(mid);
-  $('posnote').textContent=prem>0?('スキル加点 +'+Math.round(prem*100)+'%'):'';
+  const f=$('fill'); f.style.left=l+'%'; f.style.width=w+'%';
+  $('midmark').style.left=toPct(mid)+'%';   // 中央値マーカー
+  // スキル加点：増減を ▲▼ で示す
+  let arrow='';
+  if(prevPrem!==null && Math.abs(prem-prevPrem)>1e-9) arrow = prem>prevPrem ? '<span class="up-arrow">▲</span>' : '<span class="down-arrow">▼</span>';
+  $('posnote').innerHTML = prem>0 ? (arrow+'スキル加点 +'+Math.round(prem*100)+'%') : '';
+  prevMid=mid; prevPrem=prem;
 
   const rows=D.companies.map(c=>{
     const cmid=mid*c.mul, clo=lo*c.mul, chi=hi*c.mul;
@@ -421,12 +473,24 @@ function render(){
     </tr>`).join('');
 
   const missing=Object.keys(D.model.skillPrem).filter(k=>!sel.skills.has(k)).sort((a,b)=>D.model.skillPrem[b]-D.model.skillPrem[a]);
+
+  // 「あなたの次の一手」：相性最上位の企業（rows[0]）と最大伸びしろスキル（missing[0]）を接続
+  const top=rows[0], nextK=missing[0];
+  let nextMove='<div class="nextmove"><div class="nm-head">あなたの次の一手</div>'
+    +`<div class="nm-step"><span class="nm-num">1</span><div>いま最も相性が高い：<b>${top.name}</b><span class="nm-amt">想定 中央${fmt(top.cmid)}万</span></div></div>`;
+  if(nextK){
+    nextMove+=`<div class="nm-step"><span class="nm-num">2</span><div>次に伸ばすなら：<b>${skillMeta[nextK].label}</b><span class="nm-amt">理論上 +${Math.round(D.model.skillPrem[nextK]*100)}%</span></div></div>`;
+  } else {
+    nextMove+=`<div class="nm-step"><span class="nm-num">2</span><div>主要スキルは網羅済み。<b>実績の見せ方と年収交渉</b>が次の伸びしろです。</div></div>`;
+  }
+  nextMove+='</div>';
+
   let html=missing.slice(0,5).map(k=>`
     <div class="rec"><span class="ic">${skillMeta[k].icon}</span>
       <div><b>${skillMeta[k].label}</b> を獲得<br><span class="ex">${skillMeta[k].advice}</span></div>
       <span class="up">+${Math.round(D.model.skillPrem[k]*100)}%</span></div>`).join('');
   if(!missing.length) html='<div class="rec"><span class="ic">🏆</span><div><b>主要スキルを網羅しています。</b><br><span class="ex">あとは実績の見せ方と交渉。外資・メガベンチャーのハイレンジ求人に直接応募する戦略が有効です。</span></div></div>';
-  $('recs').innerHTML=html;
+  $('recs').innerHTML=nextMove+html;
 }
 
 /* ===== 出典バッジのポップオーバー =====
