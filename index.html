@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0b1020">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="転職ナビ">
+<meta name="description" content="AI/データサイエンス人材の想定年収と転職先を診断（日本国内市場・出典つき）">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b1020'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' fill='%2336d399' font-family='sans-serif' font-weight='bold'%3E¥%3C/text%3E%3C/svg%3E">
+<title>AI/データサイエンス転職ナビ — 年収・企業診断</title>
+<style>
+  :root{
+    --bg:#0b1020; --panel:#141b30; --panel2:#1b2440; --line:#27314f;
+    --ink:#e8edff; --sub:#9aa6c8; --accent:#5b8cff; --accent2:#36d399;
+    --warn:#f7b955; --bad:#f06868; --chip:#222d4d;
+    --grad:linear-gradient(135deg,#5b8cff,#36d399);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic UI",Meiryo,sans-serif;
+    background:radial-gradient(1200px 800px at 80% -10%,#1a2a55 0,transparent 60%),var(--bg);
+    color:var(--ink); line-height:1.6; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:24px 20px 80px}
+  header.hero{
+    background:var(--grad); border-radius:20px; padding:26px 30px;
+    color:#06122a; position:relative; overflow:hidden; box-shadow:0 20px 50px rgba(0,0,0,.35);
+  }
+  header.hero h1{margin:0 0 6px;font-size:25px;letter-spacing:.02em}
+  header.hero p{margin:0;font-size:14px;opacity:.85;font-weight:600}
+
+  /* freshness banner */
+  .fresh{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:16px;
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 16px;font-size:12.5px}
+  .fresh .dot{width:9px;height:9px;border-radius:50%;background:var(--accent2);box-shadow:0 0 10px var(--accent2)}
+  .fresh.stale .dot{background:var(--warn);box-shadow:0 0 10px var(--warn)}
+  .fresh .upd{color:var(--sub)}
+  .fresh b{color:var(--ink)}
+  .fresh .howto{margin-left:auto;color:var(--sub)}
+  .fresh code{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:2px 7px;color:#bcd0ff;font-size:11.5px}
+  .stalewarn{color:var(--warn);font-weight:700}
+
+  .grid{display:grid;grid-template-columns:380px 1fr;gap:22px;margin-top:20px}
+  @media(max-width:900px){.grid{grid-template-columns:1fr}}
+  @media(max-width:640px){
+    .wrap{padding:16px 12px 70px}
+    header.hero{padding:20px 18px;border-radius:16px}
+    header.hero h1{font-size:20px}
+    header.hero p{font-size:12.5px}
+    .card{padding:16px}
+    .bigfig{font-size:34px}
+    .fresh{font-size:11.5px}
+    .fresh .howto{margin-left:0;flex-basis:100%}
+    /* 企業テーブルを縦カード化 */
+    table thead{display:none}
+    table,table tbody,table tr,table td{display:block;width:100%}
+    table tr{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:12px;background:var(--panel2)}
+    table td{border:0;padding:5px 0;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;text-align:right}
+    table td::before{content:attr(data-label);color:var(--sub);font-size:11px;font-weight:700;text-align:left;flex:0 0 auto;white-space:nowrap}
+    table td.cell-name{display:block;text-align:left;border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:4px}
+    table td.cell-name::before{display:none}
+    table td.cell-name .ex{display:block;text-align:left;margin-top:3px}
+  }
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px}
+  .card h2{font-size:14px;margin:0 0 14px;color:var(--sub);text-transform:uppercase;letter-spacing:.08em}
+  label.fld{display:block;font-size:13px;color:var(--sub);margin:14px 0 6px;font-weight:600}
+  select,input[type=range]{width:100%}
+  select{background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px}
+  .rangeval{float:right;color:var(--accent2);font-weight:800}
+  input[type=range]{-webkit-appearance:none;height:6px;background:var(--line);border-radius:999px;margin-top:10px}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;
+    background:var(--grad);cursor:pointer;border:2px solid #06122a;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .chip{user-select:none;cursor:pointer;background:var(--chip);border:1px solid var(--line);
+    color:var(--sub);padding:7px 12px;border-radius:999px;font-size:12.5px;font-weight:600;transition:.15s}
+  .chip[data-on="1"]{background:rgba(91,140,255,.18);border-color:var(--accent);color:#dbe6ff}
+  .chip small{opacity:.6;font-weight:700;margin-left:4px}
+  .hint{font-size:11.5px;color:#6f7aa0;margin-top:6px}
+
+  .resultcol{display:flex;flex-direction:column;gap:22px}
+  .headline{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+  .bigfig{font-size:40px;font-weight:900;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;line-height:1}
+  .headline .sub{color:var(--sub);font-size:14px}
+  .bar{position:relative;height:46px;background:var(--panel2);border-radius:12px;margin:18px 0 6px;overflow:hidden;border:1px solid var(--line)}
+  .bar .scale{position:absolute;inset:0;display:flex;justify-content:space-between;padding:0 10px;align-items:flex-end;font-size:10px;color:#5a648a}
+  .bar .fill{position:absolute;top:0;bottom:0;background:var(--grad);opacity:.85;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800;color:#06122a;font-size:13px;transition:.4s}
+  .markrow{display:flex;justify-content:space-between;font-size:11px;color:var(--sub);margin-top:2px}
+
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--sub);font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:800}
+  .fit-high{background:rgba(54,211,153,.18);color:#7ef0c2}
+  .fit-mid{background:rgba(247,185,85,.18);color:#ffd58a}
+  .fit-low{background:rgba(240,104,104,.16);color:#ffadad}
+  td .ex{color:var(--sub);font-size:11.5px}
+  td .sal{font-weight:800;color:#dbe6ff;white-space:nowrap}
+
+  /* provenance badge */
+  .src-badge{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;
+    border:1px solid var(--line);border-radius:999px;padding:1px 8px;background:var(--panel2);text-decoration:none;cursor:help}
+  .src-badge .tdot{width:7px;height:7px;border-radius:50%}
+  .src-badge .tdate{color:var(--sub);font-weight:600}
+  .src-badge:hover{border-color:var(--accent)}
+
+  .rec{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px dashed var(--line)}
+  .rec:last-child{border-bottom:0}
+  .rec .ic{font-size:18px;line-height:1.3}
+  .rec b{color:#dbe6ff}
+  .rec .up{color:var(--accent2);font-weight:800;white-space:nowrap;margin-left:auto;font-size:12.5px}
+
+  .tag{display:inline-block;background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:1px 7px;font-size:11px;color:var(--sub);margin:2px 3px 0 0}
+
+  details.trust{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:4px 18px;margin-top:22px}
+  details.trust summary{cursor:pointer;font-weight:800;color:#dbe6ff;padding:12px 0;font-size:14px}
+  details.trust summary::marker{color:var(--accent)}
+  .trust h3{font-size:13px;color:var(--accent2);margin:14px 0 6px}
+  .trust p,.trust li{font-size:12.5px;color:#b3bedf}
+  .tierline{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:12.5px}
+  .tierline .tdot{width:10px;height:10px;border-radius:50%}
+  .tierline b{color:#dbe6ff;min-width:96px;display:inline-block}
+  .srclist a{color:#8aa3e6;text-decoration:none;font-size:12px}
+  .srclist a:hover{text-decoration:underline}
+  .srclist li{margin:4px 0}
+
+  footer{margin-top:26px;font-size:11.5px;color:#6f7aa0;text-align:center;line-height:1.8}
+  .disc{background:var(--panel);border:1px dashed var(--line);border-radius:12px;padding:12px 16px;font-size:11.5px;color:#8b96bd;margin-top:16px}
+  #err{display:none;background:rgba(240,104,104,.12);border:1px solid var(--bad);color:#ffadad;padding:14px;border-radius:12px;margin-top:16px;font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <h1>AI / データサイエンス 転職ナビ</h1>
+    <p>スキル・経験を入力すると、想定年収レンジと相性の良い転職先を診断します（日本国内市場）</p>
+  </header>
+
+  <div id="err">⚠️ data.js を読み込めませんでした。index.html と同じフォルダに data.js があるか確認してください。</div>
+
+  <div class="fresh" id="fresh">
+    <span class="dot"></span>
+    <span class="upd">データ最終更新：<b id="lastupd">—</b><span id="agehint"></span></span>
+    <span class="howto">更新するには Claude Code に <code>AI転職ナビのデータ更新して</code> と依頼</span>
+  </div>
+
+  <div class="grid">
+    <!-- INPUT -->
+    <div class="card">
+      <h2>あなたのプロフィール</h2>
+      <label class="fld">実務経験年数（AI/データ分析）<span class="rangeval" id="expv">7年</span></label>
+      <input type="range" id="exp" min="0" max="20" value="7">
+
+      <label class="fld">現在の職種・立ち位置</label>
+      <select id="role">
+        <option value="ds">データサイエンティスト / 分析</option>
+        <option value="mle">機械学習・AIエンジニア</option>
+        <option value="genai" selected>生成AI / LLM 活用・推進</option>
+        <option value="consult">AIコンサル / 企画・伴走支援</option>
+        <option value="pm">AI/データ系 PM・PdM</option>
+        <option value="adjacent">隣接職（SE・企画など）からの挑戦</option>
+      </select>
+
+      <label class="fld">スキル・強み（当てはまるものをタップ）</label>
+      <div class="chips" id="skills"></div>
+      <div class="hint">※加点幅は「本ツール推定」です。下部「データの信頼性について」を必ずご確認ください。</div>
+
+      <label class="fld">転職の志向</label>
+      <select id="pref">
+        <option value="balance" selected>年収と裁量のバランス重視</option>
+        <option value="salary">年収最大化を最優先</option>
+        <option value="stable">安定・大手志向</option>
+        <option value="growth">成長環境・裁量・SO志向</option>
+      </select>
+
+      <div class="disc">
+        本診断は公開市場データに基づく<strong>目安の試算</strong>です。最も目立つ年収額は「実在の平均値」を「本ツールの計算式（推定）」で加工したもので、個別オファーを保証する値ではありません。
+      </div>
+    </div>
+
+    <!-- RESULTS -->
+    <div class="resultcol">
+      <div class="card">
+        <h2>想定年収レンジ <span class="src-badge" id="badge-model"></span></h2>
+        <div class="headline">
+          <span class="bigfig" id="salmid">—</span>
+          <span class="sub" id="salrange">—</span>
+        </div>
+        <div class="bar">
+          <div class="fill" id="fill" style="left:20%;width:30%"></div>
+          <div class="scale"><span>300</span><span>500</span><span>700</span><span>900</span><span>1100</span><span>1300+</span></div>
+        </div>
+        <div class="markrow"><span>単位：万円（理論年収ベース・本ツール推定）</span><span id="posnote"></span></div>
+        <div class="hint" id="benchline" style="margin-top:10px"></div>
+      </div>
+
+      <div class="card">
+        <h2>相性の良い転職先タイプ（年収順）</h2>
+        <table>
+          <thead><tr><th>企業タイプ</th><th>市場レンジ</th><th>あなたの想定</th><th>相性</th></tr></thead>
+          <tbody id="companies"></tbody>
+        </table>
+        <div class="hint" style="margin-top:8px">「市場レンジ」は出典つきの実在情報、「あなたの想定」は本ツール推定です。バッジにカーソルを乗せると出典・時点・信頼区分が出ます。</div>
+      </div>
+
+      <div class="card">
+        <h2>年収を引き上げる打ち手（伸びしろ順）</h2>
+        <div id="recs"></div>
+        <div class="hint" id="hotskills" style="margin-top:10px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRUST / METHODOLOGY -->
+  <details class="trust" id="trust">
+    <summary>📊 データの信頼性について（必ずお読みください）</summary>
+    <h3>信頼区分の5段階</h3>
+    <div id="tierdefs"></div>
+    <h3>この診断の限界</h3>
+    <ul>
+      <li>表示される年収額は、<b>実在の平均値</b>を<b>本ツールが設計した計算式（＝tier:本ツール推定）</b>で加工したものです。計算式の重み（スキル加点%など）は実測ではなく、公開求人の傾向からの概算です。</li>
+      <li>職種「平均」は調査ごとに時点・手法・対象が異なります（例：同じAIエンジニアでも558万〜628.9万と出典で差）。点ではなく幅で捉えてください。</li>
+      <li>エージェント記事の数値は集客目的でやや高めに出る傾向があります。tier バッジで区別しています。</li>
+      <li>実際のオファーは面接評価・採用枠・タイミング・個別交渉で大きく上下します。</li>
+    </ul>
+    <h3>最新性について</h3>
+    <p id="freshdesc"></p>
+    <h3>出典一覧</h3>
+    <ul class="srclist" id="srclist"></ul>
+  </details>
+
+  <footer>
+    AI/データサイエンス転職ナビ &middot; 完全ローカル動作・データ送信なし &middot; 数値は data.js の出典に基づく目安です
+  </footer>
+</div>
+
+<script src="data.js"></script>
+<script>
+const D = window.SALARY_DATA;
+const $ = id=>document.getElementById(id);
+const fmt = n=>Math.round(n).toLocaleString();
+
+function daysSince(iso){
+  const then=new Date(iso+"T00:00:00"); const now=new Date();
+  return Math.floor((now-then)/86400000);
+}
+function srcBadge(srcId){
+  const s=D.sources[srcId]; if(!s) return '';
+  const t=D.tiers[s.tier];
+  return `<a class="src-badge" href="${s.url}" target="_blank" title="${t.label}：${t.desc}／出典：${s.name}（${s.date}）">
+    <span class="tdot" style="background:${t.color}"></span>${t.label}<span class="tdate">${s.date}</span></a>`;
+}
+function tierBadgeInline(tierKey,date){
+  const t=D.tiers[tierKey];
+  return `<a class="src-badge" title="${t.label}：${t.desc}"><span class="tdot" style="background:${t.color}"></span>${t.label}${date?`<span class="tdate">${date}</span>`:''}</a>`;
+}
+
+const sel = {exp:7, role:'genai', pref:'balance', skills:new Set()};
+const skillMeta = {
+  genai:{label:'生成AI/LLM実務',icon:'🤖',advice:'プロンプトを超えたアプリ実装・評価の実務を職務経歴に明記。最も単価差が大きい領域。'},
+  agent:{label:'RAG/AIエージェント実装',icon:'🧩',advice:'RAG構築・エージェント設計の実装を1件作る。2026年の最頻出求人スキル。'},
+  mlops:{label:'MLOps/AI基盤',icon:'⚙️',advice:'本番運用基盤（CI/CD・監視・クラウド）の経験。「作って終わり」から脱却。'},
+  biz:{label:'ビジネス課題解決・ドメイン理解',icon:'📈',advice:'課題定義からROIまで語れる力。技術×ビジネスは1000万円帯の必須要件。'},
+  mgmt:{label:'マネジメント・リード経験',icon:'👥',advice:'チームリード・推進実績。マネジメントトラックは年収天井が上がる。'},
+  eng:{label:'英語（ビジネス以上）',icon:'🌐',advice:'外資・グローバル求人の高レンジに乗るための鍵。'},
+  research:{label:'論文読解・研究/実装力',icon:'📄',advice:'論文を実装に落とす力。トップ層・研究開発系の差別化要素。'},
+  comm:{label:'発信・社内推進・教育',icon:'📣',advice:'社内推進・教育・発信の実績。AI伴走支援/エバンジェリスト系で強み。'}
+};
+
+function boot(){
+  // freshness
+  const age=daysSince(D.meta.last_updated);
+  $('lastupd').textContent=D.meta.last_updated+`（${age}日前）`;
+  if(age>D.meta.stale_after_days){
+    $('fresh').classList.add('stale');
+    $('agehint').innerHTML=` <span class="stalewarn">／${D.meta.stale_after_days}日超：要更新</span>`;
+  }
+  $('badge-model').innerHTML='';
+  $('badge-model').outerHTML=tierBadgeInline('tool');
+
+  // skill chips from model.skillPrem
+  $('skills').innerHTML=Object.keys(D.model.skillPrem).map(k=>
+    `<span class="chip" data-k="${k}">${skillMeta[k].label} <small>+${Math.round(D.model.skillPrem[k]*100)}%</small></span>`).join('');
+  document.querySelectorAll('#skills .chip').forEach(c=>{
+    c.addEventListener('click',()=>{const k=c.dataset.k,on=c.dataset.on==='1';c.dataset.on=on?'0':'1';on?sel.skills.delete(k):sel.skills.add(k);render();});
+  });
+  ['genai','biz','comm','agent'].forEach(k=>{const c=document.querySelector(`#skills .chip[data-k="${k}"]`);if(c){c.dataset.on='1';sel.skills.add(k);}});
+
+  $('exp').addEventListener('input',e=>{sel.exp=+e.target.value;$('expv').textContent=sel.exp+(sel.exp>=20?'年+':'年');render();});
+  $('role').addEventListener('change',e=>{sel.role=e.target.value;render();});
+  $('pref').addEventListener('change',e=>{sel.pref=e.target.value;render();});
+
+  // benchmark line
+  $('benchline').innerHTML='参考平均： '+D.benchmarks.map(b=>
+    `${b.role} <b style="color:#dbe6ff">${b.avg}万</b> ${srcBadge(b.srcId)}`).join(' ・ ');
+
+  // hot skills
+  $('hotskills').innerHTML='需要が高いスキル： '+D.hotSkills.list.map(t=>`<span class="tag">${t}</span>`).join('')+' '+srcBadge(D.hotSkills.srcId);
+
+  // trust panel
+  $('tierdefs').innerHTML=Object.values(D.tiers).map(t=>
+    `<div class="tierline"><span class="tdot" style="background:${t.color}"></span><b>${t.label}</b> ${t.desc}</div>`).join('');
+  $('freshdesc').textContent=`現在のデータは ${D.meta.last_updated} 時点。AI分野は変動が速いため、${D.meta.stale_after_days}日を超えると上部バナーに「要更新」が表示されます。更新は data.js を最新の再調査結果で書き換えることで反映されます（手順は UPDATE.md）。`;
+  $('srclist').innerHTML=Object.values(D.sources).map(s=>{
+    const t=D.tiers[s.tier];
+    return `<li><span class="src-badge" style="margin-right:6px"><span class="tdot" style="background:${t.color}"></span>${t.label}</span><a href="${s.url}" target="_blank">${s.name}</a>（${s.date}）</li>`;
+  }).join('');
+
+  render();
+}
+
+function baseByExp(y){
+  if(y<=2) return 380 + y*25;
+  if(y<=5) return 480 + (y-2)*30;
+  if(y<=9) return 600 + (y-5)*22;
+  if(y<=14) return 700 + (y-9)*22;
+  return Math.min(820 + (y-14)*16, 980);
+}
+function personalRange(){
+  let mid=baseByExp(sel.exp)*D.model.roleMul[sel.role];
+  let prem=0; sel.skills.forEach(k=>prem+=D.model.skillPrem[k]||0);
+  prem=Math.min(prem,D.model.premCap); mid=mid*(1+prem);
+  let lo=mid*0.82, hi=mid*1.30;
+  if(sel.pref==='salary') hi=mid*1.45;
+  if(sel.pref==='stable'){hi=mid*1.15;lo=mid*0.9;}
+  if(sel.pref==='growth') hi=mid*1.38;
+  return {lo,mid,hi,prem};
+}
+function render(){
+  const {lo,mid,hi,prem}=personalRange();
+  $('salmid').textContent=fmt(mid)+'万円';
+  $('salrange').textContent='想定レンジ '+fmt(lo)+'〜'+fmt(hi)+'万円 / 年';
+  const toPct=v=>Math.max(0,Math.min(100,(v-300)/1000*100));
+  const l=toPct(lo), w=Math.max(6,toPct(hi)-toPct(lo));
+  const f=$('fill'); f.style.left=l+'%'; f.style.width=w+'%'; f.textContent=fmt(mid);
+  $('posnote').textContent=prem>0?('スキル加点 +'+Math.round(prem*100)+'%'):'';
+
+  const rows=D.companies.map(c=>{
+    const cmid=mid*c.mul, clo=lo*c.mul, chi=hi*c.mul;
+    let fitScore=c.fit.filter(k=>sel.skills.has(k)).length;
+    if(sel.pref==='salary'&&c.mul>=1.18) fitScore++;
+    if(sel.pref==='stable'&&/金融|コンサル|外資/.test(c.name)) fitScore++;
+    if(sel.pref==='growth'&&/スタートアップ|メガベンチャー/.test(c.name)) fitScore++;
+    return {...c,cmid,clo,chi,fitScore};
+  }).sort((a,b)=>b.cmid-a.cmid);
+  const fitClass=s=>s>=3?'fit-high':s>=2?'fit-mid':'fit-low';
+  const fitText=s=>s>=3?'非常に高い':s>=2?'高い':s>=1?'中':'要強化';
+  $('companies').innerHTML=rows.map(c=>`
+    <tr>
+      <td class="cell-name"><b>${c.name}</b><span class="ex">${c.ex}</span></td>
+      <td class="sal" data-label="市場レンジ">${c.range}<br>${srcBadge(c.srcId)}</td>
+      <td class="sal" data-label="あなたの想定">${fmt(c.clo)}–${fmt(c.chi)}<br><span class="ex">中央 ${fmt(c.cmid)}万</span></td>
+      <td data-label="相性"><span class="pill ${fitClass(c.fitScore)}">${fitText(c.fitScore)}</span></td>
+    </tr>`).join('');
+
+  const missing=Object.keys(D.model.skillPrem).filter(k=>!sel.skills.has(k)).sort((a,b)=>D.model.skillPrem[b]-D.model.skillPrem[a]);
+  let html=missing.slice(0,5).map(k=>`
+    <div class="rec"><span class="ic">${skillMeta[k].icon}</span>
+      <div><b>${skillMeta[k].label}</b> を獲得<br><span class="ex">${skillMeta[k].advice}</span></div>
+      <span class="up">+${Math.round(D.model.skillPrem[k]*100)}%</span></div>`).join('');
+  if(!missing.length) html='<div class="rec"><span class="ic">🏆</span><div><b>主要スキルを網羅しています。</b><br><span class="ex">あとは実績の見せ方と交渉。外資・メガベンチャーのハイレンジ求人に直接応募する戦略が有効です。</span></div></div>';
+  $('recs').innerHTML=html;
+}
+
+// 起動（全ての宣言の後で呼ぶ）
+if(!D){ $('err').style.display='block'; }
+else { boot(); }
+</script>
+</body>
+</html>
