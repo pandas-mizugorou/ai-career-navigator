@@ -21,6 +21,8 @@
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
+  /* キーボード操作時のフォーカス可視化（WCAG 2.4.7） */
+  :where(a,button,select,summary,input,[tabindex]):focus-visible{outline:2px solid var(--accent2);outline-offset:2px;border-radius:6px}
   body{
     font-family:"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic UI",Meiryo,sans-serif;
     background:radial-gradient(1200px 800px at 80% -10%,#1a2a55 0,transparent 60%),var(--bg);
@@ -53,9 +55,15 @@
     header.hero h1{font-size:20px}
     header.hero p{font-size:12.5px}
     .card{padding:16px}
-    .bigfig{font-size:34px}
+    .bigfig{font-size:44px}
+    .bigfig .unit{font-size:18px}
     .fresh{font-size:11.5px}
-    .fresh .howto{margin-left:0;flex-basis:100%}
+    /* 制作者向けの更新手順はモバイルのファーストビューから隠す（trustパネルに残る） */
+    .fresh .howto{display:none}
+    /* チップのタップ領域を指サイズに */
+    .chips{gap:10px}
+    .chip{padding:10px 14px}
+    .chip small{white-space:nowrap}
     /* 企業テーブルを縦カード化 */
     table thead{display:none}
     table,table tbody,table tr,table td{display:block;width:100%}
@@ -67,33 +75,49 @@
     table td.cell-name .ex{display:block;text-align:left;margin-top:3px}
   }
   .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px}
-  .card h2{font-size:14px;margin:0 0 14px;color:var(--sub);text-transform:uppercase;letter-spacing:.08em}
+  .card h2{font-size:16px;margin:0 0 14px;color:#c7d2f0;font-weight:700;display:flex;align-items:center;gap:9px}
+  .card h2::before{content:"";flex:0 0 auto;width:4px;height:16px;border-radius:2px;background:var(--grad)}
   label.fld{display:block;font-size:13px;color:var(--sub);margin:14px 0 6px;font-weight:600}
+  label.fld.rangelabel{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
   select,input[type=range]{width:100%}
   select{background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px}
-  .rangeval{float:right;color:var(--accent2);font-weight:800}
-  input[type=range]{-webkit-appearance:none;height:6px;background:var(--line);border-radius:999px;margin-top:10px}
-  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;
-    background:var(--grad);cursor:pointer;border:2px solid #06122a;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+  .rangeval{color:var(--accent2);font-weight:800}
+  input[type=range]{-webkit-appearance:none;appearance:none;height:8px;background:var(--line);border-radius:999px;margin-top:10px}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:50%;
+    background:var(--grad);cursor:pointer;border:2px solid #06122a;box-shadow:0 2px 8px rgba(0,0,0,.4);transition:transform .12s}
+  input[type=range]::-moz-range-thumb{width:28px;height:28px;border-radius:50%;background:#5b8cff;cursor:pointer;border:2px solid #06122a;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+  input[type=range]::-moz-range-track{height:8px;background:var(--line);border-radius:999px}
+  input[type=range]:active::-webkit-slider-thumb{transform:scale(1.15)}
+  input[type=range]:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 4px rgba(54,211,153,.4)}
   .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
   .chip{user-select:none;cursor:pointer;background:var(--chip);border:1px solid var(--line);
     color:var(--sub);padding:7px 12px;border-radius:999px;font-size:12.5px;font-weight:600;transition:.15s}
   .chip[data-on="1"]{background:rgba(91,140,255,.18);border-color:var(--accent);color:#dbe6ff}
   .chip small{opacity:.6;font-weight:700;margin-left:4px}
-  .hint{font-size:11.5px;color:#6f7aa0;margin-top:6px}
+  .hint{font-size:11.5px;color:#8b96bd;margin-top:6px}
+  /* 初期例ラベル（未操作時のみ表示）と推定開示文 */
+  .examplenote{font-size:12px;color:#dbe6ff;background:rgba(91,140,255,.12);border:1px solid var(--accent);border-radius:10px;padding:9px 12px;margin-top:14px;line-height:1.5}
+  .examplenote b{color:#fff}
+  .estimate-note{font-size:11.5px;color:var(--sub);margin-top:10px;line-height:1.5}
+  .estimate-note b{color:#dbe6ff}
 
   .resultcol{display:flex;flex-direction:column;gap:22px}
   .headline{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
-  .bigfig{font-size:40px;font-weight:900;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;line-height:1}
+  .bigfig{font-size:56px;font-weight:900;letter-spacing:-.02em;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;line-height:1;filter:drop-shadow(0 0 18px rgba(54,211,153,.35))}
+  .bigfig .unit{font-size:22px;font-weight:800;margin-left:2px}
   .headline .sub{color:var(--sub);font-size:14px}
   .bar{position:relative;height:46px;background:var(--panel2);border-radius:12px;margin:18px 0 6px;overflow:hidden;border:1px solid var(--line)}
-  .bar .scale{position:absolute;inset:0;display:flex;justify-content:space-between;padding:0 10px;align-items:flex-end;font-size:10px;color:#5a648a}
+  .bar .scale{position:absolute;inset:0;display:flex;justify-content:space-between;padding:0 10px;align-items:flex-end;font-size:10px;color:var(--sub)}
   .bar .fill{position:absolute;top:0;bottom:0;background:var(--grad);opacity:.85;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800;color:#06122a;font-size:13px;transition:.4s}
   .markrow{display:flex;justify-content:space-between;font-size:11px;color:var(--sub);margin-top:2px}
 
   table{width:100%;border-collapse:collapse;font-size:13px}
-  th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+  th,td{text-align:left;padding:12px 8px;border-bottom:1px solid var(--line);vertical-align:top}
   th{color:var(--sub);font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+  tbody tr:hover{background:rgba(91,140,255,.06)}
+  tr.toprow{box-shadow:inset 3px 0 0 var(--accent2)}
+  td.sal{font-weight:800;color:#dbe6ff;white-space:nowrap}
+  td.mkt{color:var(--sub);font-weight:600}
   .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:800}
   .fit-high{background:rgba(54,211,153,.18);color:#7ef0c2}
   .fit-mid{background:rgba(247,185,85,.18);color:#ffd58a}
@@ -101,12 +125,36 @@
   td .ex{color:var(--sub);font-size:11.5px}
   td .sal{font-weight:800;color:#dbe6ff;white-space:nowrap}
 
-  /* provenance badge */
-  .src-badge{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;
-    border:1px solid var(--line);border-radius:999px;padding:1px 8px;background:var(--panel2);text-decoration:none;cursor:help}
+  /* provenance badge（button化：タップ/クリックでポップ） */
+  .src-badge{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;font-family:inherit;color:var(--ink);
+    border:1px solid var(--line);border-radius:999px;padding:2px 9px;background:var(--panel2);text-decoration:none;cursor:pointer;line-height:1.5}
   .src-badge .tdot{width:7px;height:7px;border-radius:50%}
+  .src-badge .tmark{font-size:11px;font-weight:900;line-height:1}
   .src-badge .tdate{color:var(--sub);font-weight:600}
-  .src-badge:hover{border-color:var(--accent)}
+  .src-badge:hover,.src-badge[aria-expanded="true"]{border-color:var(--accent)}
+  .src-badge:not(button){cursor:default}  /* 出典一覧など非対話のチップ */
+  .tierline .tmark{font-size:13px;font-weight:900;min-width:14px;text-align:center}
+
+  /* 出典ポップオーバー */
+  .src-pop{position:absolute;z-index:60;max-width:280px;background:var(--panel2);border:1px solid var(--accent);
+    border-radius:12px;padding:12px 14px;box-shadow:0 16px 44px rgba(0,0,0,.55);font-size:12.5px;color:#cdd7f5;line-height:1.6}
+  .src-pop .pop-tier{display:flex;align-items:center;gap:7px;font-size:14px;color:#fff;margin-bottom:3px}
+  .src-pop .pop-tier .tmark{font-size:15px;font-weight:900}
+  .src-pop .pop-desc{color:var(--sub);margin-bottom:7px}
+  .src-pop .pop-src,.src-pop .pop-date{color:#dbe6ff}
+  .src-pop .pop-src span,.src-pop .pop-date span{display:inline-block;min-width:34px;color:var(--sub);font-weight:700;margin-right:6px}
+  .src-pop .pop-note{color:var(--sub);font-size:11.5px}
+  .src-pop .pop-link{display:inline-block;margin-top:9px;color:#8aa3e6;text-decoration:none;font-weight:800}
+  .src-pop .pop-link:hover{text-decoration:underline}
+
+  /* 信頼度ラダー（常設凡例） */
+  .trust-ladder{display:flex;flex-wrap:wrap;align-items:center;gap:5px 9px;background:var(--panel);
+    border:1px solid var(--line);border-radius:12px;padding:9px 14px;font-size:11.5px;color:var(--sub);margin-bottom:-4px}
+  .trust-ladder .ladder-title{font-weight:800;color:#c7d2f0}
+  .trust-ladder .ladder-arrow{font-size:10px;color:#6f7aa0;font-weight:700}
+  .trust-ladder .ladder-sep{color:#4a5780}
+  .trust-ladder .ladder-item{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+  .trust-ladder .ladder-item .tmark{font-size:12px;font-weight:900}
 
   .rec{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px dashed var(--line)}
   .rec:last-child{border-bottom:0}
@@ -128,7 +176,7 @@
   .srclist a:hover{text-decoration:underline}
   .srclist li{margin:4px 0}
 
-  footer{margin-top:26px;font-size:11.5px;color:#6f7aa0;text-align:center;line-height:1.8}
+  footer{margin-top:26px;font-size:11.5px;color:#8b96bd;text-align:center;line-height:1.8}
   .disc{background:var(--panel);border:1px dashed var(--line);border-radius:12px;padding:12px 16px;font-size:11.5px;color:#8b96bd;margin-top:16px}
   #err{display:none;background:rgba(240,104,104,.12);border:1px solid var(--bad);color:#ffadad;padding:14px;border-radius:12px;margin-top:16px;font-size:13px}
 </style>
@@ -137,7 +185,7 @@
 <div class="wrap">
   <header class="hero">
     <h1>AI / データサイエンス 転職ナビ</h1>
-    <p>スキル・経験を入力すると、想定年収レンジと相性の良い転職先を診断します（日本国内市場）</p>
+    <p>スキルと経験から想定年収レンジ＋相性の良い転職先を診断（日本国内）。<b>盛らない／全数字に出典バッジ／入力は端末内だけ・送信ゼロ。</b></p>
   </header>
 
   <div id="err">⚠️ data.js を読み込めませんでした。index.html と同じフォルダに data.js があるか確認してください。</div>
@@ -152,10 +200,10 @@
     <!-- INPUT -->
     <div class="card">
       <h2>あなたのプロフィール</h2>
-      <label class="fld">実務経験年数（AI/データ分析）<span class="rangeval" id="expv">7年</span></label>
-      <input type="range" id="exp" min="0" max="20" value="7">
+      <label class="fld rangelabel" for="exp">実務経験年数（AI/データ分析）<span class="rangeval" id="expv">7年</span></label>
+      <input type="range" id="exp" min="0" max="20" value="7" aria-label="実務経験年数（AI/データ分析）" aria-valuetext="7年">
 
-      <label class="fld">現在の職種・立ち位置</label>
+      <label class="fld" for="role">現在の職種・立ち位置</label>
       <select id="role">
         <option value="ds">データサイエンティスト / 分析</option>
         <option value="mle">機械学習・AIエンジニア</option>
@@ -169,7 +217,7 @@
       <div class="chips" id="skills"></div>
       <div class="hint">※加点幅は「本ツール推定」です。下部「データの信頼性について」を必ずご確認ください。</div>
 
-      <label class="fld">転職の志向</label>
+      <label class="fld" for="pref">転職の志向</label>
       <select id="pref">
         <option value="balance" selected>年収と裁量のバランス重視</option>
         <option value="salary">年収最大化を最優先</option>
@@ -184,14 +232,18 @@
 
     <!-- RESULTS -->
     <div class="resultcol">
+      <!-- 信頼度ラダー（バッジの色・記号を解読するための常設凡例） -->
+      <div class="trust-ladder" id="ladder" aria-label="信頼区分の凡例（信頼の高い順）"></div>
       <div class="card">
         <h2>想定年収レンジ <span class="src-badge" id="badge-model"></span></h2>
-        <div class="headline">
+        <div class="headline" aria-live="polite" aria-atomic="true">
           <span class="bigfig" id="salmid">—</span>
           <span class="sub" id="salrange">—</span>
         </div>
+        <div class="estimate-note">この額は<b>実在の市場平均</b>を<b>本ツールの推定式</b>で加工した目安です（実測値ではありません）。各数値の出典・信頼区分はバッジから確認できます。</div>
+        <div class="examplenote" id="examplenote">※ これは「経験7年・生成AI職・主要スキル4つ」を仮置きした<b>初期例</b>です。左の入力をあなたの状況に変えてください。</div>
         <div class="bar">
-          <div class="fill" id="fill" style="left:20%;width:30%"></div>
+          <div class="fill" id="fill" style="left:20%;width:30%" aria-hidden="true"></div>
           <div class="scale"><span>300</span><span>500</span><span>700</span><span>900</span><span>1100</span><span>1300+</span></div>
         </div>
         <div class="markrow"><span>単位：万円（理論年収ベース・本ツール推定）</span><span id="posnote"></span></div>
@@ -248,18 +300,22 @@ function daysSince(iso){
   const then=new Date(iso+"T00:00:00"); const now=new Date();
   return Math.floor((now-then)/86400000);
 }
+// 色に頼らない形の符号（色覚多様性対応）。色は補強、形が主の識別子。
+function tierMark(t){ return `<span class="tmark" aria-hidden="true" style="color:${t.color}">${t.glyph||'•'}</span>`; }
+// 出典バッジ＝タップ/クリックでポップオーバー（hover の title も併存）。href ではなくポップ内のリンクで出典へ。
 function srcBadge(srcId){
   const s=D.sources[srcId]; if(!s) return '';
   const t=D.tiers[s.tier];
-  return `<a class="src-badge" href="${s.url}" target="_blank" title="${t.label}：${t.desc}／出典：${s.name}（${s.date}）">
-    <span class="tdot" style="background:${t.color}"></span>${t.label}<span class="tdate">${s.date}</span></a>`;
+  return `<button type="button" class="src-badge" data-src="${srcId}" aria-haspopup="dialog" aria-expanded="false" title="${t.label}：${t.desc}／出典：${s.name}（${s.date}）／タップで詳細">
+    ${tierMark(t)}${t.label}<span class="tdate">${s.date}</span></button>`;
 }
 function tierBadgeInline(tierKey,date){
   const t=D.tiers[tierKey];
-  return `<a class="src-badge" title="${t.label}：${t.desc}"><span class="tdot" style="background:${t.color}"></span>${t.label}${date?`<span class="tdate">${date}</span>`:''}</a>`;
+  return `<button type="button" class="src-badge" data-tier="${tierKey}" aria-haspopup="dialog" aria-expanded="false" title="${t.label}：${t.desc}／タップで詳細">${tierMark(t)}${t.label}${date?`<span class="tdate">${date}</span>`:''}</button>`;
 }
 
 const sel = {exp:7, role:'genai', pref:'balance', skills:new Set()};
+let touched = false;   // ユーザーが入力を操作したか（初期例ラベルの表示制御）
 const skillMeta = {
   genai:{label:'生成AI/LLM実務',icon:'🤖',advice:'プロンプトを超えたアプリ実装・評価の実務を職務経歴に明記。最も単価差が大きい領域。'},
   agent:{label:'RAG/AIエージェント実装',icon:'🧩',advice:'RAG構築・エージェント設計の実装を1件作る。2026年の最頻出求人スキル。'},
@@ -286,13 +342,13 @@ function boot(){
   $('skills').innerHTML=Object.keys(D.model.skillPrem).map(k=>
     `<span class="chip" data-k="${k}">${skillMeta[k].label} <small>+${Math.round(D.model.skillPrem[k]*100)}%</small></span>`).join('');
   document.querySelectorAll('#skills .chip').forEach(c=>{
-    c.addEventListener('click',()=>{const k=c.dataset.k,on=c.dataset.on==='1';c.dataset.on=on?'0':'1';on?sel.skills.delete(k):sel.skills.add(k);render();});
+    c.addEventListener('click',()=>{const k=c.dataset.k,on=c.dataset.on==='1';c.dataset.on=on?'0':'1';on?sel.skills.delete(k):sel.skills.add(k);touched=true;render();});
   });
   ['genai','biz','comm','agent'].forEach(k=>{const c=document.querySelector(`#skills .chip[data-k="${k}"]`);if(c){c.dataset.on='1';sel.skills.add(k);}});
 
-  $('exp').addEventListener('input',e=>{sel.exp=+e.target.value;$('expv').textContent=sel.exp+(sel.exp>=20?'年+':'年');render();});
-  $('role').addEventListener('change',e=>{sel.role=e.target.value;render();});
-  $('pref').addEventListener('change',e=>{sel.pref=e.target.value;render();});
+  $('exp').addEventListener('input',e=>{sel.exp=+e.target.value;$('expv').textContent=sel.exp+(sel.exp>=20?'年+':'年');e.target.setAttribute('aria-valuetext',sel.exp>=20?'20年以上':sel.exp+'年');touched=true;render();});
+  $('role').addEventListener('change',e=>{sel.role=e.target.value;touched=true;render();});
+  $('pref').addEventListener('change',e=>{sel.pref=e.target.value;touched=true;render();});
 
   // benchmark line
   $('benchline').innerHTML='参考平均： '+D.benchmarks.map(b=>
@@ -301,13 +357,19 @@ function boot(){
   // hot skills
   $('hotskills').innerHTML='需要が高いスキル： '+D.hotSkills.list.map(t=>`<span class="tag">${t}</span>`).join('')+' '+srcBadge(D.hotSkills.srcId);
 
-  // trust panel
-  $('tierdefs').innerHTML=Object.values(D.tiers).map(t=>
-    `<div class="tierline"><span class="tdot" style="background:${t.color}"></span><b>${t.label}</b> ${t.desc}</div>`).join('');
+  // 信頼度ラダー（結果カラム最上部の常設凡例）— バッジを trust パネルを開かずに解読できるように
+  const tiersByRank=Object.values(D.tiers).sort((a,b)=>a.rank-b.rank);
+  $('ladder').innerHTML='<span class="ladder-title">信頼度</span><span class="ladder-arrow">高</span>'
+    +tiersByRank.map(t=>`<span class="ladder-item">${tierMark(t)}${t.label}</span>`).join('<span class="ladder-sep">›</span>')
+    +'<span class="ladder-arrow">低</span>';
+
+  // trust panel（信頼の高い順に並べる）
+  $('tierdefs').innerHTML=tiersByRank.map(t=>
+    `<div class="tierline">${tierMark(t)}<b>${t.label}</b> ${t.desc}</div>`).join('');
   $('freshdesc').textContent=`現在のデータは ${D.meta.last_updated} 時点。AI分野は変動が速いため、${D.meta.stale_after_days}日を超えると上部バナーに「要更新」が表示されます。更新は data.js を最新の再調査結果で書き換えることで反映されます（手順は UPDATE.md）。`;
   $('srclist').innerHTML=Object.values(D.sources).map(s=>{
     const t=D.tiers[s.tier];
-    return `<li><span class="src-badge" style="margin-right:6px"><span class="tdot" style="background:${t.color}"></span>${t.label}</span><a href="${s.url}" target="_blank">${s.name}</a>（${s.date}）</li>`;
+    return `<li><span class="src-badge" style="margin-right:6px">${tierMark(t)}${t.label}</span><a href="${s.url}" target="_blank">${s.name}</a>（${s.date}）</li>`;
   }).join('');
 
   render();
@@ -332,8 +394,9 @@ function personalRange(){
 }
 function render(){
   const {lo,mid,hi,prem}=personalRange();
-  $('salmid').textContent=fmt(mid)+'万円';
+  $('salmid').innerHTML=fmt(mid)+'<span class="unit">万円</span>';
   $('salrange').textContent='想定レンジ '+fmt(lo)+'〜'+fmt(hi)+'万円 / 年';
+  $('examplenote').style.display = touched ? 'none' : '';
   const toPct=v=>Math.max(0,Math.min(100,(v-300)/1000*100));
   const l=toPct(lo), w=Math.max(6,toPct(hi)-toPct(lo));
   const f=$('fill'); f.style.left=l+'%'; f.style.width=w+'%'; f.textContent=fmt(mid);
@@ -349,11 +412,11 @@ function render(){
   }).sort((a,b)=>b.cmid-a.cmid);
   const fitClass=s=>s>=3?'fit-high':s>=2?'fit-mid':'fit-low';
   const fitText=s=>s>=3?'非常に高い':s>=2?'高い':s>=1?'中':'要強化';
-  $('companies').innerHTML=rows.map(c=>`
-    <tr>
+  $('companies').innerHTML=rows.map((c,i)=>`
+    <tr${i===0?' class="toprow"':''}>
       <td class="cell-name"><b>${c.name}</b><span class="ex">${c.ex}</span></td>
-      <td class="sal" data-label="市場レンジ">${c.range}<br>${srcBadge(c.srcId)}</td>
-      <td class="sal" data-label="あなたの想定">${fmt(c.clo)}–${fmt(c.chi)}<br><span class="ex">中央 ${fmt(c.cmid)}万</span></td>
+      <td class="mkt" data-label="市場レンジ">${c.range}<br>${srcBadge(c.srcId)}</td>
+      <td class="sal" data-label="あなたの想定">${fmt(c.clo)}–${fmt(c.chi)}<br><span class="ex">中央 ${fmt(c.cmid)}万</span><br>${tierBadgeInline('tool')}</td>
       <td data-label="相性"><span class="pill ${fitClass(c.fitScore)}">${fitText(c.fitScore)}</span></td>
     </tr>`).join('');
 
@@ -365,6 +428,52 @@ function render(){
   if(!missing.length) html='<div class="rec"><span class="ic">🏆</span><div><b>主要スキルを網羅しています。</b><br><span class="ex">あとは実績の見せ方と交渉。外資・メガベンチャーのハイレンジ求人に直接応募する戦略が有効です。</span></div></div>';
   $('recs').innerHTML=html;
 }
+
+/* ===== 出典バッジのポップオーバー =====
+   hover の title だけだとモバイル(PWA)で根拠がゼロ伝達になるため、
+   タップ/クリックで tier・説明・出典・時点・リンクを出すポップを併設する。 */
+let pop=null, popBtn=null;
+function closePop(){
+  if(pop){ pop.remove(); pop=null; }
+  if(popBtn){ popBtn.setAttribute('aria-expanded','false'); popBtn=null; }
+}
+function openPop(btn){
+  closePop();
+  const t = btn.dataset.src ? D.tiers[D.sources[btn.dataset.src].tier] : D.tiers[btn.dataset.tier];
+  let html = `<div class="pop-tier">${tierMark(t)}<b>${t.label}</b></div><div class="pop-desc">${t.desc}</div>`;
+  if(btn.dataset.src){
+    const s=D.sources[btn.dataset.src];
+    html += `<div class="pop-src"><span>出典</span>${s.name}</div>`
+          + `<div class="pop-date"><span>時点</span>${s.date}</div>`
+          + `<a class="pop-link" href="${s.url}" target="_blank" rel="noopener">出典ページを開く ↗</a>`;
+  } else {
+    html += `<div class="pop-note">＝この値は本ツールが市場データから計算した推定。実測値ではありません。</div>`;
+  }
+  pop=document.createElement('div');
+  pop.className='src-pop'; pop.setAttribute('role','dialog'); pop.setAttribute('aria-label',t.label+'の説明');
+  pop.innerHTML=html;
+  document.body.appendChild(pop);
+  // 位置決め（ビューポート内にクランプ）
+  const r=btn.getBoundingClientRect();
+  pop.style.top=(r.bottom+window.scrollY+6)+'px';
+  const pw=pop.offsetWidth, vw=document.documentElement.clientWidth;
+  let left=r.left+window.scrollX;
+  left=Math.min(left, window.scrollX+vw-pw-10);
+  left=Math.max(window.scrollX+8, left);
+  pop.style.left=left+'px';
+  btn.setAttribute('aria-expanded','true'); popBtn=btn;
+}
+document.addEventListener('click',e=>{
+  const btn=e.target.closest('.src-badge');
+  if(btn && (btn.dataset.src||btn.dataset.tier)){
+    e.preventDefault(); e.stopPropagation();
+    (btn.getAttribute('aria-expanded')==='true') ? closePop() : openPop(btn);
+    return;
+  }
+  if(!e.target.closest('.src-pop')) closePop();
+});
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closePop(); });
+window.addEventListener('resize',closePop);
 
 // 起動（全ての宣言の後で呼ぶ）
 if(!D){ $('err').style.display='block'; }
