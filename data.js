@@ -12,13 +12,14 @@ window.SALARY_DATA = {
     note: "数値は下記 sources に基づく目安。職種平均は時点・調査手法が異なるものを併記しています。"
   },
 
-  // 信頼区分の定義（バッジの色と説明）
+  // 信頼区分の定義（rank=信頼の高い順 1..5／glyph=色に頼らない形の符号）
+  // tool は危険色(赤)ではなく無彩色。赤は freshness 警告・エラー専用に温存する。
   tiers: {
-    official: { label:"公式統計",     desc:"政府・公的機関の調査",          color:"#36d399" },
-    survey:   { label:"専門サーベイ", desc:"人材会社の年収調査レポート",    color:"#5b8cff" },
-    posting:  { label:"求人実数",     desc:"実際の募集要項の提示レンジ",    color:"#7c9cff" },
-    agency:   { label:"エージェント推定", desc:"転職メディアの集計・解説記事", color:"#f7b955" },
-    tool:     { label:"本ツール推定", desc:"市場データから本ツールが設計した計算ロジック（実測値ではない）", color:"#f06868" }
+    official: { label:"公式統計",     desc:"政府・公的機関の調査",          color:"#36d399", glyph:"◎", rank:1 },
+    survey:   { label:"専門サーベイ", desc:"人材会社の年収調査レポート",    color:"#5b8cff", glyph:"○", rank:2 },
+    posting:  { label:"求人実数",     desc:"実際の募集要項の提示レンジ",    color:"#9b7cff", glyph:"□", rank:3 },
+    agency:   { label:"エージェント推定", desc:"転職メディアの集計・解説記事（集客目的でやや高めに出る傾向）", color:"#f7b955", glyph:"△", rank:4 },
+    tool:     { label:"本ツール推定", desc:"市場データから本ツールが設計した計算ロジック（実測値ではない）", color:"#9aa0bf", glyph:"⚙", rank:5 }
   },
 
   // 出典一覧（id で各数値から参照）
