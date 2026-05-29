@@ -73,6 +73,9 @@
     table td.cell-name{display:block;text-align:left;border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:4px}
     table td.cell-name::before{display:none}
     table td.cell-name .ex{display:block;text-align:left;margin-top:3px}
+    /* P2-11 複数行セルはラベル上・値下に積む（左右に散らばらない） */
+    table td.cell-stack{display:block;text-align:left;white-space:normal}
+    table td.cell-stack::before{display:block;text-align:left;margin-bottom:3px}
   }
   .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px}
   .card h2{font-size:16px;margin:0 0 14px;color:#c7d2f0;font-weight:700;display:flex;align-items:center;gap:9px}
@@ -194,6 +197,17 @@
   .srclist a:hover{text-decoration:underline}
   .srclist li{margin:4px 0}
 
+  /* P2-8 主役カードの格上げ（視覚階層：主役 > 結果 > 入力） */
+  .card.hero-result{background:linear-gradient(160deg,#19223e,#141b30);border-color:#2c3a63;
+    box-shadow:0 16px 44px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.05)}
+  /* P2-4 共有・保存アクション（すべて端末内で完結・外部送信なし） */
+  .actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:16px}
+  .act{font-family:inherit;font-size:12.5px;font-weight:800;color:#06122a;background:var(--grad);border:0;border-radius:9px;padding:8px 14px;cursor:pointer}
+  .act.ghost{background:var(--panel2);color:var(--ink);border:1px solid var(--line)}
+  .act:hover{filter:brightness(1.06)}
+  .act-msg{font-size:11.5px;color:var(--accent2);font-weight:700}
+  .diffnote{font-size:12px;color:#cdd7f5;background:rgba(54,211,153,.10);border:1px solid rgba(54,211,153,.35);border-radius:9px;padding:7px 11px;margin-top:12px}
+  .diffnote b{color:#fff}
   footer{margin-top:26px;font-size:11.5px;color:#8b96bd;text-align:center;line-height:1.8}
   .disc{background:var(--panel);border:1px dashed var(--line);border-radius:12px;padding:12px 16px;font-size:11.5px;color:#8b96bd;margin-top:16px}
   #err{display:none;background:rgba(240,104,104,.12);border:1px solid var(--bad);color:#ffadad;padding:14px;border-radius:12px;margin-top:16px;font-size:13px}
@@ -252,13 +266,14 @@
     <div class="resultcol">
       <!-- 信頼度ラダー（バッジの色・記号を解読するための常設凡例） -->
       <div class="trust-ladder" id="ladder" aria-label="信頼区分の凡例（信頼の高い順）"></div>
-      <div class="card">
+      <div class="card hero-result">
         <h2>想定年収レンジ <span class="src-badge" id="badge-model"></span></h2>
         <div class="headline" aria-live="polite" aria-atomic="true">
           <span class="bigfig" id="salmid">—</span>
           <span class="sub" id="salrange">—</span>
         </div>
         <div class="estimate-note">この額は<b>実在の市場平均</b>を<b>本ツールの推定式</b>で加工した目安です（実測値ではありません）。各数値の出典・信頼区分はバッジから確認できます。</div>
+        <div class="diffnote" id="diffnote" style="display:none"></div>
         <div class="examplenote" id="examplenote">※ これは「経験7年・生成AI職・主要スキル4つ」を仮置きした<b>初期例</b>です。左の入力をあなたの状況に変えてください。</div>
         <div class="bar">
           <div class="fill" id="fill" style="left:20%;width:30%" aria-hidden="true"></div>
@@ -267,7 +282,13 @@
           <div class="scale" id="scale" aria-hidden="true"></div>
         </div>
         <div class="markrow"><span>単位：万円。帯＝想定レンジ／<b style="color:var(--ink)">▼</b>＝あなたの中央値／縦線＝職種別の市場平均</span><span id="posnote"></span></div>
-        <div class="hint" id="benchline" style="margin-top:10px"></div>
+        <div class="hint" id="gapline" style="margin-top:10px"></div>
+        <div class="hint" id="benchline" style="margin-top:6px"></div>
+        <div class="actions">
+          <button type="button" id="btn-copy" class="act">📋 結果をコピー</button>
+          <button type="button" id="btn-reset" class="act ghost">↺ リセット</button>
+          <span class="act-msg" id="actmsg" role="status" aria-live="polite"></span>
+        </div>
       </div>
 
       <div class="card">
@@ -345,6 +366,59 @@ function setChip(c,on){
   on ? sel.skills.add(c.dataset.k) : sel.skills.delete(c.dataset.k);
 }
 function toggleChip(c){ setChip(c, c.getAttribute('aria-pressed')!=='true'); touched=true; render(); }
+
+/* ===== P2-4 共有・保存（URLハッシュ / クリップボード / localStorage。すべて端末内で完結・外部送信なし） ===== */
+const SKILL_KEYS = ()=>Object.keys(D.model.skillPrem);
+function writeHash(){
+  const h=`exp=${sel.exp}&role=${sel.role}&pref=${sel.pref}&sk=${[...sel.skills].join(',')}`;
+  history.replaceState(null,'','#'+h);   // replaceState なので履歴を汚さない
+}
+function applyHash(){
+  const raw=location.hash.replace(/^#/,''); if(!raw) return false;
+  const p=new URLSearchParams(raw);
+  if(p.has('exp')) sel.exp=Math.max(0,Math.min(20, parseInt(p.get('exp'),10)||0));
+  if(p.has('role') && D.model.roleMul[p.get('role')]) sel.role=p.get('role');
+  if(p.has('pref') && prefLabel[p.get('pref')]) sel.pref=p.get('pref');
+  if(p.has('sk')) sel.skills=new Set(p.get('sk').split(',').filter(k=>SKILL_KEYS().includes(k)));
+  return true;
+}
+function syncUIFromSel(){
+  $('exp').value=sel.exp; $('expv').textContent=sel.exp+(sel.exp>=20?'年+':'年');
+  $('exp').setAttribute('aria-valuetext', sel.exp>=20?'20年以上':sel.exp+'年');
+  $('role').value=sel.role; $('pref').value=sel.pref;
+  document.querySelectorAll('#skills .chip').forEach(c=>setChip(c, sel.skills.has(c.dataset.k)));
+}
+function flashMsg(m){ $('actmsg').textContent=m; clearTimeout(flashMsg._t); flashMsg._t=setTimeout(()=>{$('actmsg').textContent='';},2600); }
+function copyResult(){
+  const {lo,mid,hi}=personalRange();
+  const skills=[...sel.skills].map(k=>skillMeta[k].label).join('、')||'なし';
+  const text=`【AI転職ナビ 診断結果｜本ツール推定】
+想定年収 中央 ${fmt(mid)}万円（レンジ ${fmt(lo)}〜${fmt(hi)}万）
+条件：経験${sel.exp}年 / ${roleLabel[sel.role]} / 志向：${prefLabel[sel.pref]}
+スキル：${skills}
+※実在の市場平均を本ツールの推定式で加工した目安。実測値ではありません。
+${location.href}`;
+  (navigator.clipboard?navigator.clipboard.writeText(text):Promise.reject())
+    .then(()=>flashMsg('コピーしました（共有リンク込み）'))
+    .catch(()=>flashMsg('コピーできませんでした'));
+}
+function resetAll(){
+  sel.exp=7; sel.role='genai'; sel.pref='balance'; sel.skills=new Set();
+  document.querySelectorAll('#skills .chip').forEach(c=>setChip(c,false));
+  ['genai','biz','comm','agent'].forEach(k=>{const c=document.querySelector(`#skills .chip[data-k="${k}"]`);if(c)setChip(c,true);});
+  syncUIFromSel(); touched=false;
+  history.replaceState(null,'',location.pathname+location.search);
+  render(); flashMsg('初期状態に戻しました');
+}
+function showRevisitDiff(curMid){
+  let last=null; try{ last=parseInt(localStorage.getItem('acn_lastmid'),10); }catch(e){}
+  if(last && Math.abs(curMid-last)>=1){
+    const d=Math.round(curMid-last);
+    $('diffnote').innerHTML=`前回訪問時 ${fmt(last)}万 → 今回 <b>${fmt(curMid)}万</b>（${d>=0?'+':''}${fmt(d)}万）`;
+    $('diffnote').style.display='';
+  }
+  try{ localStorage.setItem('acn_lastmid', String(Math.round(curMid))); }catch(e){}
+}
 const skillMeta = {
   genai:{label:'生成AI/LLM実務',icon:'🤖',advice:'プロンプトを超えたアプリ実装・評価の実務を職務経歴に明記。最も単価差が大きい領域。'},
   agent:{label:'RAG/AIエージェント実装',icon:'🧩',advice:'RAG構築・エージェント設計の実装を1件作る。2026年の最頻出求人スキル。'},
@@ -355,6 +429,23 @@ const skillMeta = {
   research:{label:'論文読解・研究/実装力',icon:'📄',advice:'論文を実装に落とす力。トップ層・研究開発系の差別化要素。'},
   comm:{label:'発信・社内推進・教育',icon:'📣',advice:'社内推進・教育・発信の実績。AI伴走支援/エバンジェリスト系で強み。'}
 };
+const roleLabel={ds:'データサイエンティスト',mle:'機械学習・AIエンジニア',genai:'生成AI/LLM推進',consult:'AIコンサル/伴走',pm:'AI/データ系PM',adjacent:'隣接職からの挑戦'};
+const prefLabel={balance:'年収と裁量のバランス',salary:'年収最大化',stable:'安定・大手志向',growth:'成長環境・裁量・SO'};
+
+// P2-6 打ち手の優先度を「加点% × 職種・志向の適合係数」で重み付け（表示する加点%自体は変えない）
+function skillWeight(k){
+  let w=D.model.skillPrem[k]; const r=sel.role, p=sel.pref;
+  if(r==='adjacent'){ if(k==='biz'||k==='comm') w*=1.4; if(k==='research') w*=0.6; }
+  if(r==='genai' && (k==='agent'||k==='mlops')) w*=1.3;
+  if(r==='ds' && (k==='mlops'||k==='biz')) w*=1.2;
+  if(r==='mle' && (k==='mlops'||k==='agent')) w*=1.25;
+  if(r==='consult' && (k==='biz'||k==='comm'||k==='mgmt')) w*=1.3;
+  if(r==='pm' && (k==='biz'||k==='mgmt')) w*=1.3;
+  if(p==='salary' && (k==='genai'||k==='biz')) w*=1.2;
+  if(p==='growth' && (k==='agent'||k==='research')) w*=1.2;
+  if(p==='stable' && (k==='biz'||k==='mgmt')) w*=1.15;
+  return w;
+}
 
 function boot(){
   // freshness
@@ -377,10 +468,15 @@ function boot(){
     c.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){ e.preventDefault(); toggleChip(c); } });
   });
   ['genai','biz','comm','agent'].forEach(k=>{const c=document.querySelector(`#skills .chip[data-k="${k}"]`);if(c) setChip(c,true);});
+  // 共有リンク（URLハッシュ）から状態を復元
+  if(applyHash()) touched=true;   // 復元時は初期例ラベルを出さない
+  syncUIFromSel();
 
   $('exp').addEventListener('input',e=>{sel.exp=+e.target.value;$('expv').textContent=sel.exp+(sel.exp>=20?'年+':'年');e.target.setAttribute('aria-valuetext',sel.exp>=20?'20年以上':sel.exp+'年');touched=true;render();});
   $('role').addEventListener('change',e=>{sel.role=e.target.value;touched=true;render();});
   $('pref').addEventListener('change',e=>{sel.pref=e.target.value;touched=true;render();});
+  $('btn-copy').addEventListener('click',copyResult);
+  $('btn-reset').addEventListener('click',resetAll);
 
   // benchmark line
   $('benchline').innerHTML='参考平均： '+D.benchmarks.map(b=>
@@ -406,6 +502,7 @@ function boot(){
   }).join('');
 
   render();
+  showRevisitDiff(personalRange().mid);   // 前回訪問時との差分（localStorage）
 }
 
 function baseByExp(y){
@@ -467,19 +564,36 @@ function render(){
   $('companies').innerHTML=rows.map((c,i)=>`
     <tr${i===0?' class="toprow"':''}>
       <td class="cell-name"><b>${c.name}</b><span class="ex">${c.ex}</span></td>
-      <td class="mkt" data-label="市場レンジ">${c.range}<br>${srcBadge(c.srcId)}</td>
-      <td class="sal" data-label="あなたの想定">${fmt(c.clo)}–${fmt(c.chi)}<br><span class="ex">中央 ${fmt(c.cmid)}万</span><br>${tierBadgeInline('tool')}</td>
+      <td class="mkt cell-stack" data-label="市場レンジ">${c.range}<br>${srcBadge(c.srcId)}</td>
+      <td class="sal cell-stack" data-label="あなたの想定">${fmt(c.clo)}–${fmt(c.chi)}<br><span class="ex">中央 ${fmt(c.cmid)}万</span><br>${tierBadgeInline('tool')}</td>
       <td data-label="相性"><span class="pill ${fitClass(c.fitScore)}">${fitText(c.fitScore)}</span></td>
     </tr>`).join('');
 
-  const missing=Object.keys(D.model.skillPrem).filter(k=>!sel.skills.has(k)).sort((a,b)=>D.model.skillPrem[b]-D.model.skillPrem[a]);
+  // P2-6 未取得スキルを「職種・志向の適合係数」で重み付けして並べ替え（表示する加点%は実値のまま）
+  const missing=Object.keys(D.model.skillPrem).filter(k=>!sel.skills.has(k)).sort((a,b)=>skillWeight(b)-skillWeight(a));
+
+  // 最大伸びしろスキルを足したときの中央値ゲイン（理論値）
+  const nextK=missing[0];
+  let gainTxt='';
+  if(nextK){
+    const baseMid=baseByExp(sel.exp)*D.model.roleMul[sel.role];
+    const newPrem=Math.min(prem+D.model.skillPrem[nextK], D.model.premCap);
+    const gain=Math.max(0, baseMid*(1+newPrem)-mid);
+    gainTxt=`中央 +${fmt(gain)}万（理論上）`;
+  }
+
+  // P2-7 次の大台までのギャップ＋最短の一手
+  const band=(Math.floor(mid/100)+1)*100;
+  let gl=`次の大台 <b style="color:#dbe6ff">${fmt(band)}万円台</b>まで あと <b style="color:#dbe6ff">+${fmt(band-mid)}万</b>`;
+  if(nextK) gl+=`。最短の一手は「${skillMeta[nextK].label}」追加で ${gainTxt}`;
+  $('gapline').innerHTML=gl;
 
   // 「あなたの次の一手」：相性最上位の企業（rows[0]）と最大伸びしろスキル（missing[0]）を接続
-  const top=rows[0], nextK=missing[0];
+  const top=rows[0];
   let nextMove='<div class="nextmove"><div class="nm-head">あなたの次の一手</div>'
     +`<div class="nm-step"><span class="nm-num">1</span><div>いま最も相性が高い：<b>${top.name}</b><span class="nm-amt">想定 中央${fmt(top.cmid)}万</span></div></div>`;
   if(nextK){
-    nextMove+=`<div class="nm-step"><span class="nm-num">2</span><div>次に伸ばすなら：<b>${skillMeta[nextK].label}</b><span class="nm-amt">理論上 +${Math.round(D.model.skillPrem[nextK]*100)}%</span></div></div>`;
+    nextMove+=`<div class="nm-step"><span class="nm-num">2</span><div>${roleLabel[sel.role]}のあなたが次に伸ばすなら：<b>${skillMeta[nextK].label}</b><span class="nm-amt">${gainTxt}</span></div></div>`;
   } else {
     nextMove+=`<div class="nm-step"><span class="nm-num">2</span><div>主要スキルは網羅済み。<b>実績の見せ方と年収交渉</b>が次の伸びしろです。</div></div>`;
   }
@@ -491,6 +605,8 @@ function render(){
       <span class="up">+${Math.round(D.model.skillPrem[k]*100)}%</span></div>`).join('');
   if(!missing.length) html='<div class="rec"><span class="ic">🏆</span><div><b>主要スキルを網羅しています。</b><br><span class="ex">あとは実績の見せ方と交渉。外資・メガベンチャーのハイレンジ求人に直接応募する戦略が有効です。</span></div></div>';
   $('recs').innerHTML=nextMove+html;
+
+  writeHash();   // 現在の条件を共有可能URL（ハッシュ）に反映（replaceState・送信なし）
 }
 
 /* ===== 出典バッジのポップオーバー =====
@@ -538,6 +654,8 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closePop(); });
 window.addEventListener('resize',closePop);
+// 同一タブでのURL貼り替え・ブラウザの戻る/進むでも状態を復元（writeHashはreplaceStateなので発火しない＝ループしない）
+window.addEventListener('hashchange',()=>{ if(applyHash()){ touched=true; syncUIFromSel(); render(); } });
 
 // 起動（全ての宣言の後で呼ぶ）
 if(!D){ $('err').style.display='block'; }
