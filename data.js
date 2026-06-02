@@ -6,7 +6,7 @@
    ============================================================ */
 window.SALARY_DATA = {
   meta: {
-    last_updated: "2026-05-30",   // ← 更新時にこの日付を書き換える
+    last_updated: "2026-06-02",   // ← 更新時にこの日付を書き換える
     market: "日本国内",
     stale_after_days: 90,         // この日数を超えたら画面に「要更新」警告
     note: "数値は下記 sources に基づく目安。職種平均は時点・調査手法が異なるものを併記しています。"
@@ -24,15 +24,15 @@ window.SALARY_DATA = {
 
   // 出典一覧（id で各数値から参照）
   sources: {
-    jobtag:     { name:"厚労省 職業情報提供サイト job tag", url:"https://shigoto.mhlw.go.jp/", date:"2025", tier:"official" },
-    kyujinbox:  { name:"求人ボックス 給料ナビ（miraie 記事経由）", url:"https://miraie-group.jp/sees/article/detail/AI_engineer_nenshu", date:"2025", tier:"agency" },
-    morgan:     { name:"Morgan McKinley 年収ガイド 東京", url:"https://www.morganmckinley.com/jp-ja/salary-guide", date:"2025", tier:"survey" },
+    jobtag:     { name:"厚労省 職業情報提供サイト job tag", url:"https://shigoto.mhlw.go.jp/", date:"2026", tier:"official" },
+    kyujinbox:  { name:"求人ボックス 給料ナビ（miraie 記事経由）", url:"https://miraie-group.jp/sees/article/detail/AI_engineer_nenshu", date:"2026", tier:"agency" },
+    morgan:     { name:"Morgan McKinley 年収ガイド 東京", url:"https://www.morganmckinley.com/jp-ja/salary-guide", date:"2026", tier:"survey" },
     mynavi_age: { name:"AIエンジニア年代別年収（miraie 集計）", url:"https://miraie-group.jp/sees/article/detail/AI_engineer_nenshu", date:"2025", tier:"agency" },
     relasic:    { name:"リラシク AIエンジニア求人の全貌 2026", url:"https://relasic.jp/contents/column/ai-engineer/", date:"2026", tier:"agency" },
     relacom:    { name:"リラコム 生成AI時代のキャリア戦略", url:"https://comm.relance.jp/blog/ai-engineer-career-strategy-20m-jpy/", date:"2025", tier:"agency" },
     geekly:     { name:"Geekly AI企業ランキング日本", url:"https://www.geekly.co.jp/column/cat-technology/ai_company_rankings_japan/", date:"2026", tier:"agency" },
     sincereed:  { name:"シンシアード DS年収解説", url:"https://sincereed-agent.com/column/datascientist_salary/", date:"2025", tier:"agency" },
-    michaelpage:{ name:"Michael Page 求人実例（LLM/生成AI〜1500万）", url:"https://www.michaelpage.co.jp/", date:"2026", tier:"posting" }
+    michaelpage:{ name:"Michael Page 求人実例（機械学習EM・LLM/生成AI領域 600–1500万・東京/フルリモート可）", url:"https://www.michaelpage.co.jp/job-detail/ref/jn-022026-6943594", date:"2026", tier:"posting" }
   },
 
   // 職種別の参考平均（実在の公表値・出典つき）
