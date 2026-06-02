@@ -146,6 +146,12 @@ try {
   for (const id of collectSrcIds(D))
     if (!sourceIds.has(id)) err(`(c) 参照整合: srcId "${id}" が sources に存在しません`);
 
+  // (c2) 出典 URL の健全性：全 sources[].url が http(s):// で始まる
+  // （index.html は safeUrl() で javascript: 等を弾くが、データ側でも担保する）
+  for (const [sid, s] of Object.entries(D.sources || {}))
+    if (!/^https?:\/\//i.test(String(s?.url || "")))
+      err(`(c2) 出典URL不正: sources.${sid}.url が http(s):// で始まりません: ${JSON.stringify(s?.url)}`);
+
   // (d) tier 整合：sources[].tier と model.tier が tiers に実在、各 rank は数値
   const tierIds = new Set(Object.keys(D.tiers || {}));
   for (const [sid, s] of Object.entries(D.sources || {}))
@@ -169,6 +175,27 @@ try {
   for (const [k, v] of Object.entries(D.model?.roleMul || {})) if (!inRange(v, ROLEMUL)) err(`(e) model.roleMul.${k} 域外(${ROLEMUL.join("〜")}): ${v}`);
   for (const [k, v] of Object.entries(D.model?.skillPrem || {})) if (!inRange(v, PREM)) err(`(e) model.skillPrem.${k} 域外(${PREM.join("〜")}): ${v}`);
   if (D.model && !inRange(D.model.premCap, CAP)) err(`(e) model.premCap 域外(${CAP.join("〜")}): ${D.model.premCap}`);
+
+  // (e2) model.expCurve（経験→中央値の点列）の健全性：
+  //   各点が [数値,数値] / 中央値が現実域(SAL) / 年が単調増加（baseByExp の線形補間が破綻しないため）。
+  if (D.model && "expCurve" in D.model) {
+    const ec = D.model.expCurve;
+    if (!Array.isArray(ec) || ec.length < 2) {
+      err(`(e2) model.expCurve は2点以上の配列である必要があります: ${JSON.stringify(ec)}`);
+    } else {
+      let prevYear = -Infinity;
+      ec.forEach((pt, i) => {
+        if (!Array.isArray(pt) || pt.length !== 2 || !isNum(pt[0]) || !isNum(pt[1])) {
+          err(`(e2) model.expCurve[${i}] が [年:数値, 中央値:数値] 形式でありません: ${JSON.stringify(pt)}`);
+          return;
+        }
+        const [year, med] = pt;
+        if (!inRange(med, SAL)) err(`(e2) model.expCurve[${i}] の中央値 ${med} が現実域(${SAL.join("〜")}万)外`);
+        if (year <= prevYear) err(`(e2) model.expCurve[${i}] の年 ${year} が単調増加でありません（前=${prevYear}）`);
+        prevYear = year;
+      });
+    }
+  }
 
   // (f) 鮮度：last_updated が実行当日（JST）と一致
   const expect = EXPECT_DATE || todayJST();
@@ -194,10 +221,15 @@ try {
     if (roleLabelKeys) compare("model.roleMul", new Set(Object.keys(D.model?.roleMul || {})), "index.html roleLabel", roleLabelKeys);
     else warn("Tier2: index.html から roleLabel を抽出できず。roleMul 整合チェックを skip");
     // companies[].fit は相性判定で sel.skills（=skillPrem キー）と filter 照合される。
-    // skillPrem 外のキー（職種キー等）は index.html 側で安全に無視されるだけで画面は
-    // 壊れない → ERROR ではなく WARN（誤検知で正当なデータを止めないため）。
+    // 区別：
+    //  - skillPrem 外 かつ roleMul 内のキー＝「職種キー取り違え」（fit にスキルでなく職種を入れた）
+    //    → 相性が永遠に 0 になる実害バグ。ERROR で止める。
+    //  - それ以外の未知キー（typo 等）＝ index.html 側で安全に無視され画面は壊れない → WARN。
+    const roleMulKeys = new Set(Object.keys(D.model?.roleMul || {}));
     (D.companies || []).forEach((c, i) => (c.fit || []).forEach((k) => {
-      if (!skillPremKeys.has(k)) warn(`Tier2: companies[${i}].fit の "${k}" が model.skillPrem に無い（相性判定で無視されます。意図通りか確認を）`);
+      if (skillPremKeys.has(k)) return;
+      if (roleMulKeys.has(k)) err(`Tier2: companies[${i}].fit の "${k}" は職種キー(roleMul)です（スキルキー取り違え→相性判定が常に不成立）。skillPrem のキーに修正してください`);
+      else warn(`Tier2: companies[${i}].fit の "${k}" が model.skillPrem に無い（相性判定で無視されます。意図通りか確認を）`);
     }));
   }
 
