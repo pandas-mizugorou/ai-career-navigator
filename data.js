@@ -90,7 +90,7 @@ window.SALARY_DATA = {
   // AI/生成AI職の「ソフトウェア作成者(土台)比」上乗せ。IT職内の差なので小さい。cap で頭打ち（過大評価回避）。
   aiPremium: { tier: "agency", srcId: "geekly_ai", cap: 1.20,
     byAgeBand: [ { band:"20代", mul:1.10 }, { band:"30代", mul:1.14 }, { band:"40代", mul:1.09 } ],
-    note: "Geekly AIエンジニア年代別 ÷ 賃金構造 ソフトウェア作成者(同年代)。IT職内の上乗せのため小さい。生成AIスキル個別の加点は skillPrem 側で扱い二重計上を回避。50代は出典に無いため非適用。" },
+    note: "Geekly AIエンジニア年代別 ÷ 賃金構造 ソフトウェア作成者(同年代)。IT職内の上乗せのため小さい。生成AIスキル個別の加点は skillPrem 側で扱い二重計上を回避。50代は出典に無いため非適用。【責務境界】roleMul.genai 等が既に職種上乗せを部分的に含むため、aiPremium はソフトウェア作成者アンカー比の『残差』として控えめに設定（roleMul と aiPremium で同じ上乗せを二重に乗せない）。roleMul×aiPremium の合計でも実測上限(p90≤3000万)内に収める。数値変更時はこの境界を維持すること。" },
   // 転職時の昇給実測（現年収比の見込みに使う）
   raiseOnChange: { tier: "agency", srcId: "doda_change",
     upRatio: 0.585, avgRaiseIfUp: 72.7, avgChangeAll: 7.1, medianRaise: null,
