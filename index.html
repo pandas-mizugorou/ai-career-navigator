@@ -28,6 +28,12 @@
     --ink:#e8edff; --sub:#9aa6c8; --accent:#5b8cff; --accent2:#36d399;
     --warn:#f7b955; --bad:#f06868; --chip:#222d4d;
     --grad:linear-gradient(135deg,#5b8cff,#36d399);
+    /* 可読性トークン（段階1）：極小フォントの底上げ・行間・余白を一元管理。
+       --fs-2xs(12px) を可読下限とし、これ未満を撲滅する。 */
+    --fs-2xs:12px; --fs-xs:12.5px; --fs-sm:13px; --fs-base:14px; --fs-md:15px;
+    --fs-lg:17px; --fs-xl:22px; --fs-2xl:28px; --fs-hero:56px;
+    --lh-tight:1.25; --lh-snug:1.4; --lh-normal:1.6;
+    --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:24px;
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
@@ -136,9 +142,14 @@
     /* 企業テーブルを縦カード化 */
     table thead{display:none}
     table,table tbody,table tr,table td{display:block;width:100%}
-    table tr{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:12px;background:var(--panel2)}
+    table tr{border:1px solid var(--line);border-radius:12px;padding:14px 14px;margin-bottom:14px;background:var(--panel2)}
+    /* 段階3：縦カード(display:block)化されたモバイルでは、隠した余剰行を非表示に。トグルで開く。
+       （.rowmore の可視制御は外側の基底ルール＋min-width:641px で完結するためここでは不要） */
+    tr.row-extra[hidden]{display:none}
+    /* 段階3：モバイルでは企業名を一段大きく（縦カードの主役）。 */
+    table td.cell-name .co-name{font-size:var(--fs-md)}
     table td{border:0;padding:5px 0;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;text-align:right}
-    table td::before{content:attr(data-label);color:var(--sub);font-size:11px;font-weight:700;text-align:left;flex:0 0 auto;white-space:nowrap}
+    table td::before{content:attr(data-label);color:var(--sub);font-size:var(--fs-2xs);font-weight:700;text-align:left;flex:0 0 auto;white-space:nowrap}
     table td.cell-name{display:block;text-align:left;border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:4px}
     table td.cell-name::before{display:none}
     table td.cell-name .ex{display:block;text-align:left;margin-top:3px}
@@ -159,9 +170,14 @@
       .src-pop.sheet{animation:sheetup .22s ease}
     }
   }
+  /* 段階3：641px 以上では企業行を常に全件表示し、モバイル用トグルは隠す（折りたたみはモバイル限定）。 */
+  @media(min-width:641px){
+    tr.row-extra{display:table-row !important}
+    .rowmore{display:none !important}
+  }
   .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px}
-  .card h2{font-size:16px;margin:0 0 14px;color:#c7d2f0;font-weight:700;display:flex;align-items:center;gap:9px}
-  .card h2::before{content:"";flex:0 0 auto;width:4px;height:16px;border-radius:2px;background:var(--grad)}
+  .card h2{font-size:var(--fs-lg);margin:0 0 14px;color:#c7d2f0;font-weight:700;display:flex;align-items:center;gap:9px}
+  .card h2::before{content:"";flex:0 0 auto;width:4px;height:18px;border-radius:2px;background:var(--grad)}
   label.fld{display:block;font-size:13px;color:var(--sub);margin:14px 0 6px;font-weight:600}
   label.fld.rangelabel{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
   select,input[type=range]{width:100%}
@@ -184,7 +200,7 @@
   .chip[data-on="1"]{background:rgba(91,140,255,.30);border-color:var(--accent);color:#eaf1ff}
   .chip[data-on="1"]::before{content:"✓";font-weight:900;margin-right:3px;color:var(--accent2)}  /* 色に頼らない選択状態 */
   .chip small{opacity:.6;font-weight:700;margin-left:4px}
-  .hint{font-size:11.5px;color:#8b96bd;margin-top:6px}
+  .hint{font-size:var(--fs-xs);color:#8b96bd;margin-top:6px}
   /* スキル選択の加点サマリ（動的） */
   .skillsum{margin-top:10px;font-size:12px;color:#b3bedf;display:flex;align-items:center;gap:8px;flex-wrap:wrap;
     background:rgba(91,140,255,.10);border:1px solid var(--line);border-radius:10px;padding:7px 11px}
@@ -193,7 +209,7 @@
   .skillsum .ssum-cap{color:var(--warn);font-weight:700}
   .skillsum.empty{color:#8b96bd;background:transparent;border-style:dashed}
   .groundinghint{display:flex;align-items:center;gap:6px;flex-wrap:wrap;line-height:1.5}
-  .benchnote{font-size:10.5px;color:#7a86ad}
+  .benchnote{font-size:var(--fs-2xs);color:#7a86ad}
   /* premCap 飽和の正直な開示 */
   .capnote{color:var(--warn);font-weight:700}
   /* 同年代の実測レンジ（ageBands） */
@@ -203,7 +219,7 @@
   .agerange .ar-pos.hi{color:var(--accent2)}
   .agerange .ar-pos.mid{color:#bcd0ff}
   .agerange .ar-pos.lo{color:var(--warn)}
-  .agerange .ar-cav{color:#8b96bd;font-size:11px;width:100%;margin-top:1px}
+  .agerange .ar-cav{color:#8b96bd;font-size:var(--fs-2xs);width:100%;margin-top:1px}
   /* 初期例ラベル（未操作時のみ表示）と推定開示文 */
   .examplenote{font-size:12px;color:#dbe6ff;background:rgba(91,140,255,.12);border:1px solid var(--accent);border-radius:10px;padding:9px 12px;margin-top:14px;line-height:1.5}
   .examplenote b{color:#fff}
@@ -211,12 +227,15 @@
   .estimate-note b{color:#dbe6ff}
 
   .resultcol{display:flex;flex-direction:column;gap:22px}
-  .headline{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
-  .bigfig{font-size:56px;font-weight:900;letter-spacing:-.02em;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;line-height:1;filter:drop-shadow(0 0 18px rgba(54,211,153,.35))}
-  .bigfig .unit{font-size:22px;font-weight:800;margin-left:2px}
-  .headline .sub{color:var(--sub);font-size:14px}
-  .bar{position:relative;height:46px;background:var(--panel2);border-radius:12px;margin:18px 0 6px;overflow:hidden;border:1px solid var(--line)}
-  .bar .scale{position:absolute;inset:0;display:flex;justify-content:space-between;padding:0 10px;align-items:flex-end;font-size:10px;color:var(--sub)}
+  .headline{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap}
+  .bigfig{font-size:var(--fs-hero);font-weight:900;letter-spacing:-.02em;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;line-height:1;filter:drop-shadow(0 0 18px rgba(54,211,153,.35))}
+  .bigfig .unit{font-size:var(--fs-xl);font-weight:800;margin-left:2px}
+  .headline .sub{color:var(--sub);font-size:var(--fs-base)}
+  /* 段階2 render A：レンジ文の中央値を強調（数値のみ挿入・XSS無）。 */
+  .headline .sub b{color:#dbe6ff;font-weight:800}
+  .sr-mid{font-size:var(--fs-md)}
+  .bar{position:relative;height:46px;background:var(--panel2);border-radius:12px;margin:var(--sp-5) 0 var(--sp-2);overflow:hidden;border:1px solid var(--line)}
+  .bar .scale{position:absolute;inset:0;display:flex;justify-content:space-between;padding:0 10px;align-items:flex-end;font-size:var(--fs-2xs);color:var(--sub)}
   .bar .fill{position:absolute;top:0;bottom:0;background:var(--grad);opacity:.8;border-radius:10px;transition:.4s}
   /* Wave1：参考上限ゾーン(p75→p90)。濃いボリュームゾーンと差をつけ「参考」と分かる薄いハッチ。
      色だけに頼らずストライプ（形）で区別する。transition は fill と揃える。 */
@@ -225,8 +244,8 @@
   /* 市場平均ティック：不透明度を上げて見やすく（旧 .22 は埋もれていた）。市場平均は重要な比較基準。 */
   .bar .btick{position:absolute;top:0;bottom:0;width:2px;background:rgba(205,215,245,.62);z-index:2}
   .bar .midmark{position:absolute;top:0;bottom:0;width:2px;background:var(--ink);transform:translateX(-50%);z-index:4;box-shadow:0 0 6px rgba(0,0,0,.55);transition:left .4s}
-  .bar .midmark::after{content:"▼";position:absolute;top:1px;left:50%;transform:translateX(-50%);font-size:9px;color:var(--ink);line-height:1}
-  .markrow{display:flex;justify-content:space-between;gap:10px;font-size:11px;color:var(--sub);margin-top:2px;flex-wrap:wrap}
+  .bar .midmark::after{content:"▼";position:absolute;top:1px;left:50%;transform:translateX(-50%);font-size:var(--fs-2xs);color:var(--ink);line-height:1}
+  .markrow{display:flex;justify-content:space-between;gap:10px;font-size:var(--fs-2xs);color:var(--sub);margin-top:var(--sp-2);line-height:var(--lh-snug);flex-wrap:wrap}
   /* 年収バー凡例：色サンプル付きミニ記号（帯・▼・縦線）。title 非依存の可視ラベルで WCAG を改善。 */
   .markrow .legend{display:flex;align-items:center;gap:4px 10px;flex-wrap:wrap}
   .markrow .lg{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
@@ -237,7 +256,7 @@
   .markrow .lg-line{width:2px;height:12px;background:#cdd7f5;flex:0 0 auto;border-radius:1px}
   /* バー直下の可視ラベル（▼直下に「あなた」・市場平均線下に職種名/「市場平均」）。
      title 非依存・極小だが AA を満たす色（背景 var(--panel)=#141b30 上で #9aa6c8≒5.1:1）。 */
-  .barlabels{position:relative;height:14px;margin-top:1px;font-size:9px;color:var(--sub);pointer-events:none}
+  .barlabels{position:relative;height:16px;margin-top:6px;font-size:var(--fs-2xs);color:var(--sub);pointer-events:none}
   .barlabels .you{position:absolute;transform:translateX(-50%);color:#dbe6ff;font-weight:800;white-space:nowrap;line-height:1}
   .barlabels .bl-mkt{position:absolute;transform:translateX(-50%);color:#9aa6c8;white-space:nowrap;line-height:1;font-weight:700;max-width:74px;overflow:hidden;text-overflow:ellipsis}
   /* 推定開示クラスタ：1行サマリ＋初期例ノートを1ブロックに統合（境界・余白を共有） */
@@ -257,30 +276,43 @@
     input[type=range]:active::-webkit-slider-thumb{transform:none}
   }
   /* 「あなたの次の一手」統合ブロック */
-  .nextmove{background:linear-gradient(160deg,rgba(91,140,255,.13),rgba(54,211,153,.10));border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:14px}
-  .nextmove .nm-head{font-size:11px;color:var(--sub);font-weight:800;letter-spacing:.04em;margin-bottom:6px}
+  .nextmove{background:linear-gradient(160deg,rgba(91,140,255,.13),rgba(54,211,153,.10));border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:14px}
+  .nextmove .nm-head{font-size:var(--fs-2xs);color:var(--sub);font-weight:800;letter-spacing:.04em;margin-bottom:var(--sp-2)}
   .nextmove .nm-step{display:flex;gap:10px;align-items:flex-start;padding:4px 0}
   .nextmove .nm-num{flex:0 0 auto;width:21px;height:21px;border-radius:50%;background:var(--grad);color:#06122a;font-weight:900;font-size:12px;display:flex;align-items:center;justify-content:center}
   .nextmove .nm-amt{color:var(--accent2);font-weight:800;margin-left:8px;white-space:nowrap;font-size:12.5px}
   .nextmove b{color:#dbe6ff}
 
   table{width:100%;border-collapse:collapse;font-size:13px}
-  th,td{text-align:left;padding:12px 8px;border-bottom:1px solid var(--line);vertical-align:top}
-  th{color:var(--sub);font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+  th,td{text-align:left;padding:14px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--sub);font-size:var(--fs-2xs);text-transform:uppercase;letter-spacing:.06em}
   tbody tr:hover{background:rgba(91,140,255,.06)}
   tr.toprow{box-shadow:inset 3px 0 0 var(--accent2)}
   td.sal{font-weight:800;color:#dbe6ff;white-space:nowrap}
   td.mkt{color:var(--sub);font-weight:600}
-  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:800;white-space:nowrap}
+  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:var(--fs-2xs);font-weight:800;white-space:nowrap}
   .fit-high{background:rgba(54,211,153,.18);color:#7ef0c2}
   .fit-mid{background:rgba(247,185,85,.18);color:#ffd58a}
   .fit-low{background:rgba(240,104,104,.16);color:#ffadad}
-  td .ex{color:var(--sub);font-size:11.5px}
+  td .ex{color:var(--sub);font-size:var(--fs-xs)}
   td.cell-name .ex{display:block;margin-top:3px}  /* 企業名と説明文を改行で分離（デスクトップ） */
   td .sal{font-weight:800;color:#dbe6ff;white-space:nowrap}
+  /* 段階2 render B：企業名を読みやすく（サイズ・字間・色を明示）。 */
+  .co-name{font-size:var(--fs-base);font-weight:800;color:#eef2ff;line-height:var(--lh-tight)}
+  /* 段階3：残り企業行のトグル。可視/非可視は画面幅で制御する：
+       ・≤640px … 表示（モバイル media で display:block）
+       ・≥641px / 印刷 … 非表示（!important・PCは全件常時表示のため不要）
+     不要時（余剰行ゼロ）は JS が hidden 属性を付け、[hidden] で隠す。 */
+  .rowmore{display:block;font-family:inherit;font-size:var(--fs-xs);font-weight:800;color:var(--ink);
+    background:var(--panel2);border:1px solid var(--line);border-radius:10px;
+    padding:10px 14px;margin-top:var(--sp-3);width:100%;min-height:44px;cursor:pointer}
+  .rowmore[hidden]{display:none}
+  .rowmore:hover{border-color:var(--accent);filter:brightness(1.06)}
+  .rowmore::before{content:"▾ ";color:var(--accent);font-weight:900}
+  .rowmore[aria-expanded="true"]::before{content:"▴ "}
 
   /* provenance badge（button化：タップ/クリックでポップ） */
-  .src-badge{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;font-family:inherit;color:var(--ink);white-space:nowrap;
+  .src-badge{display:inline-flex;align-items:center;gap:4px;font-size:var(--fs-2xs);font-weight:700;font-family:inherit;color:var(--ink);white-space:nowrap;
     border:1px solid var(--line);border-radius:999px;padding:2px 9px;background:var(--panel2);text-decoration:none;cursor:pointer;line-height:1.5}
   .src-badge .tdot{width:7px;height:7px;border-radius:50%}
   .src-badge .tmark{font-size:11px;font-weight:900;line-height:1}
@@ -310,8 +342,8 @@
   /* 信頼度ラダー（常設凡例） */
   /* 年収カードの後ろ（企業テーブル直上）に置く凡例。resultcol の gap(22px) を活かしつつ、
      上の年収カードへ少し寄せて「年収カード→凡例→テーブル」の塊感を出す。 */
-  .trust-ladder{display:flex;flex-wrap:wrap;align-items:center;gap:5px 9px;background:var(--panel);
-    border:1px solid var(--line);border-radius:12px;padding:9px 14px;font-size:11.5px;color:var(--sub);margin:-8px 0 -4px}
+  .trust-ladder{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2) var(--sp-3);background:var(--panel);
+    border:1px solid var(--line);border-radius:12px;padding:var(--sp-3) var(--sp-4);font-size:var(--fs-xs);color:var(--sub);margin:-8px 0 -4px}
   .trust-ladder .ladder-title{font-weight:800;color:#c7d2f0}
   /* ラダーの装飾テキストも本文同様 AA(4.5:1) を満たす（背景 var(--panel)=#141b30 上）。
      旧 #6f7aa0/#4a5780 は 4.04/2.41 で不合格だったため引き上げ。 */
@@ -326,7 +358,7 @@
   .rec b{color:#dbe6ff}
   .rec .up{color:var(--accent2);font-weight:800;white-space:nowrap;margin-left:auto;font-size:12.5px}
 
-  .tag{display:inline-block;background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:1px 7px;font-size:11px;color:var(--sub);margin:2px 3px 0 0}
+  .tag{display:inline-block;background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:1px 7px;font-size:var(--fs-2xs);color:var(--sub);margin:2px 3px 0 0}
 
   details.trust{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:4px 18px;margin-top:22px}
   details.trust summary{cursor:pointer;font-weight:800;color:#dbe6ff;padding:12px 0;font-size:14px}
@@ -338,7 +370,7 @@
   .composerow{display:flex;align-items:center;gap:9px;margin:5px 0;font-size:12px}
   .composerow .cl-label{flex:0 0 96px;display:inline-flex;align-items:center;gap:5px;color:#dbe6ff;font-weight:700}
   .composerow .cl-label .tmark{font-size:12px;font-weight:900}
-  .composerow .cl-track{flex:1 1 auto;height:11px;background:var(--panel2);border:1px solid var(--line);border-radius:999px;overflow:hidden}
+  .composerow .cl-track{flex:1 1 auto;height:12px;background:var(--panel2);border:1px solid var(--line);border-radius:999px;overflow:hidden}
   .composerow .cl-fill{height:100%;border-radius:999px;min-width:2px}
   .composerow .cl-cnt{flex:0 0 auto;color:var(--sub);font-weight:700;min-width:34px;text-align:right}
   .composenote{font-size:12px;color:#b3bedf;margin:8px 0 2px;line-height:1.6}
@@ -375,7 +407,7 @@
   .diffnote{font-size:12px;color:#cdd7f5;background:rgba(54,211,153,.10);border:1px solid rgba(54,211,153,.35);border-radius:9px;padding:7px 11px;margin-top:12px}
   .diffnote b{color:#fff}
   footer{margin-top:26px;font-size:11.5px;color:#8b96bd;text-align:center;line-height:1.8}
-  .disc{background:var(--panel);border:1px dashed var(--line);border-radius:12px;padding:12px 16px;font-size:11.5px;color:#8b96bd;margin-top:16px}
+  .disc{background:var(--panel);border:1px dashed var(--line);border-radius:12px;padding:12px 16px;font-size:var(--fs-xs);color:#8b96bd;margin-top:16px}
   #err{display:none;background:rgba(240,104,104,.12);border:1px solid var(--bad);color:#ffadad;padding:14px;border-radius:12px;margin-top:16px;font-size:13px}
 
   /* ===== Batch5→Wave2：現年収の2系統表示（市場ポジション／実測昇給見込み） ===== */
@@ -410,13 +442,13 @@
   .targetbox .tb-cav{display:block;color:#9aa6c8;font-size:11px;margin-top:6px}
 
   /* ===== Batch5：企業行の不足スキル小タグ＋求人リンク ===== */
-  .gap-tags{margin-top:4px;display:flex;flex-wrap:wrap;gap:4px;align-items:center}
-  .gap-tags .gap-lead{font-size:10.5px;color:#9aa6c8;font-weight:700}
+  .gap-tags{margin-top:var(--sp-2);display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+  .gap-tags .gap-lead{font-size:var(--fs-2xs);color:#9aa6c8;font-weight:700}
   .gap-tag{display:inline-block;background:rgba(247,185,85,.16);border:1px solid rgba(247,185,85,.4);
-    color:#ffd58a;border-radius:6px;padding:1px 7px;font-size:10.5px;font-weight:700}
-  .job-link{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;
+    color:#ffd58a;border-radius:6px;padding:1px 7px;font-size:var(--fs-2xs);font-weight:700}
+  .job-link{display:inline-flex;align-items:center;gap:3px;font-size:var(--fs-2xs);font-weight:700;
     color:#8aa3e6;text-decoration:none;background:var(--panel2);border:1px solid var(--line);
-    border-radius:999px;padding:3px 10px;margin-top:5px;cursor:pointer;font-family:inherit;line-height:1.4}
+    border-radius:999px;padding:3px 10px;margin-top:var(--sp-2);cursor:pointer;font-family:inherit;line-height:1.4}
   .job-link:hover{border-color:var(--accent);text-decoration:none}
   /* 640px 以下の縦カードでは左寄せに */
   @media(max-width:640px){
@@ -447,8 +479,11 @@
   .curve-dot.max{fill:var(--accent)}
   .curve-axis{stroke:var(--line);stroke-width:1}
   .curve-grid{stroke:var(--line);stroke-width:1;opacity:.45}
-  .curve-txt{fill:#9aa6c8;font-size:10px;font-family:inherit}
-  .curve-txt.val{fill:#dbe6ff;font-weight:800;font-size:10.5px}
+  /* 段階3：SVG は viewBox(520幅) を width:100% で縮小描画するため、CSS の px 指定は
+     描画時に縮んで極小になる。font-size は生成側の属性（ユーザー単位）で与え、
+     CSS では font-size を指定しない（CSS が属性を上書きしないようにする）。 */
+  .curve-txt{fill:#9aa6c8;font-family:inherit}
+  .curve-txt.val{fill:#dbe6ff;font-weight:800}
   .curvelegend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:10px;font-size:11.5px;color:var(--sub);align-items:center}
   .curvelegend .cl-item{display:inline-flex;align-items:center;gap:6px}
   .curvelegend .cl-swatch{width:22px;height:0;border-top:3px solid var(--accent2);flex:0 0 auto}
@@ -472,7 +507,7 @@
   .cb-table .cb-op{color:var(--sub);font-weight:800;width:18px;white-space:nowrap}
   .cb-table .cb-label{color:#cdd7f5}
   .cb-table .cb-label b{color:#dbe6ff;font-weight:700}
-  .cb-table .cb-label .cb-sub{display:block;color:#8b96bd;font-size:10.5px;margin-top:1px}
+  .cb-table .cb-label .cb-sub{display:block;color:#8b96bd;font-size:var(--fs-2xs);margin-top:1px}
   .cb-table .cb-fac{color:#dbe6ff;font-weight:800;white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums}
   .cb-table .cb-badge{text-align:right;white-space:nowrap;width:1%}
   .cb-table .cb-na{color:#8b96bd;font-weight:700}
@@ -480,7 +515,7 @@
   .cb-table tr.cb-total td{border-top:1.5px solid var(--line);padding-top:9px}
   .cb-table tr.cb-total .cb-label b{color:#fff;font-size:13px}
   .cb-table tr.cb-total .cb-fac{color:var(--accent2);font-size:13.5px}
-  .cb-cav{font-size:11px;color:#9aa6c8;margin-top:9px;line-height:1.55}
+  .cb-cav{font-size:var(--fs-2xs);color:#9aa6c8;margin-top:9px;line-height:1.55}
   .cb-cav b{color:#cdd7f5}
   @media(max-width:640px){
     /* 縦カード化はせず、内訳は密な表のまま（左ラベル・右係数）。係数が折り返さないよう最小幅確保。 */
@@ -546,6 +581,9 @@
     .rangeval,.ssum-add,.up,.nm-amt,.tb-amt,.cd-amt,.ar-val{color:#000 !important}
     table,th,td{color:#000 !important;border-color:#888 !important}
     th{color:#000 !important}
+    /* 段階3：印刷では企業行を全件表示（折りたたみ無効）。トグルボタンは紙面に不要なので隠す。 */
+    tr.row-extra{display:table-row !important}
+    .rowmore{display:none !important}
     .pill{border:1px solid #000;color:#000 !important;background:#fff !important}
     .src-badge{border:1px solid #888;color:#000 !important;background:#fff !important}
     .tmark{color:#000 !important}
@@ -727,9 +765,12 @@
       <div class="card">
         <h2>相性の良い転職先タイプ（年収順）</h2>
         <table>
-          <thead><tr><th scope="col">企業タイプ</th><th scope="col">市場レンジ</th><th scope="col">あなたの想定</th><th scope="col">相性</th><th scope="col">次の一歩</th></tr></thead>
+          <thead><tr><th scope="col">企業タイプ</th><th scope="col">市場レンジ</th><th scope="col">あなたの想定 <span class="src-badge" id="badge-companies"></span></th><th scope="col">相性</th><th scope="col">次の一歩</th></tr></thead>
           <tbody id="companies"></tbody>
         </table>
+        <!-- 段階3：モバイル(≤640px)専用の「残りを表示」トグル。CSP順守のため onclick は使わず addEventListener。
+             PC/印刷では CSS で非表示（全件常時表示のため不要）。 -->
+        <button type="button" class="rowmore" id="btn-rowmore" aria-expanded="false" aria-controls="companies" hidden></button>
         <div class="hint" style="margin-top:8px">「市場レンジ」は出典つきの実在情報、「あなたの想定」は本ツール推定です。バッジにカーソルを乗せると出典・時点・信頼区分が出ます。</div>
         <!-- Batch5-2：求人検索リンクの透明性開示（リンク先に何が渡るか） -->
         <details class="jobdisclose">
@@ -850,6 +891,8 @@ function tierBadgeInline(tierKey,date){
 // age は数値(22..62) または null（未入力＝「答えたくない」）。null 時は経験年数から保守推定。
 // location はキー(capital/major/regional/remote) または null（未指定＝補正なし＝×1.0）。
 const sel = {age:null, exp:7, role:'genai', pref:'balance', skills:new Set(), current:'', target:'', location:null};
+// 段階3：モバイルで常時表示する企業行数（上位 ROW_VISIBLE 件）。以降は折りたたみ対象。
+const ROW_VISIBLE = 4;
 let touched = false;        // ユーザーが入力を操作したか（初期例ラベルの表示制御）
 let prevMid=null, prevPrem=null;  // 変化フィードバック用の前回値
 let bootingDone=false;      // boot() 完走後に true。render() の結果更新バッジを初期描画で出さないためのガード
@@ -1135,6 +1178,8 @@ function boot(){
   // Batch5：活動の打ち手・年収カーブも「本ツール推定」明示バッジを付ける（実測でないことを誠実に開示）。
   if($('badge-actionmoves')){ $('badge-actionmoves').outerHTML=tierBadgeInline('tool'); }
   if($('badge-curve')){ $('badge-curve').outerHTML=tierBadgeInline('tool'); }
+  // 段階3：企業テーブルの「あなたの想定」列バッジを thead に1回だけ表示（各行への重複描画を撤去）。
+  if($('badge-companies')){ $('badge-companies').outerHTML=tierBadgeInline('tool'); }
 
   // skill chips from model.skillPrem（role=checkbox・キーボード操作・aria-checked 対応）。
   // 複数選択の意味を SR に正確に伝えるため checkbox を採用。加点 +% は aria-label に一本化し、
@@ -1180,6 +1225,8 @@ function boot(){
   // 印刷/PDF保存：インライン onclick は使わず addEventListener で window.print() を呼ぶ（@media print が紙面整形）。
   if($('btn-print')) $('btn-print').addEventListener('click',()=>{ try{ window.print(); }catch(e){} });
   $('btn-reset').addEventListener('click',resetAll);
+  // 段階3：企業行トグル（モバイルのみ可視）。onclick 不使用＝CSP順守。
+  if($('btn-rowmore')) $('btn-rowmore').addEventListener('click',toggleRowMore);
 
   // benchmark line（各ベンチに note を小さく注記）
   $('benchline').innerHTML='参考平均： '+D.benchmarks.map(b=>
@@ -1560,6 +1607,9 @@ function renderCurve(e){
   const vmin=Math.min(...allVals), vmax=Math.max(...allVals);
   // 描画領域
   const W=520, H=210, padL=46, padR=14, padT=14, padB=30;
+  // 段階3：SVG は width:100% で縮小描画されるため、font-size はユーザー単位（viewBox基準）で大きめに与える。
+  // 最小級モバイル幅(≈300px描画)でも CSS換算 ≥12px を満たすよう軸20・値21 ユーザー単位とする。
+  const FS_AX=20, FS_VAL=21;
   const innerW=W-padL-padR, innerH=H-padT-padB;
   const n=ages.length;
   const x=i=> padL + (n<=1?0:innerW*i/(n-1));
@@ -1572,13 +1622,13 @@ function renderCurve(e){
   for(let g=0;g<=4;g++){
     const v=lo+span*g/4, yy=y(v);
     grid+=`<line class="curve-grid" x1="${padL}" y1="${yy.toFixed(1)}" x2="${(W-padR).toFixed(1)}" y2="${yy.toFixed(1)}"/>`;
-    grid+=`<text class="curve-txt" x="${padL-6}" y="${(yy+3).toFixed(1)}" text-anchor="end">${Math.round(v)}</text>`;
+    grid+=`<text class="curve-txt" font-size="${FS_AX}" x="${padL-6}" y="${(yy+3).toFixed(1)}" text-anchor="end">${Math.round(v)}</text>`;
   }
   // X 軸ラベル（年齢・端点と中間のみ間引き表示）
   let xlab='';
   ages.forEach((a,i)=>{
     if(i===0||i===n-1||i===Math.floor((n-1)/2)){
-      xlab+=`<text class="curve-txt" x="${x(i).toFixed(1)}" y="${(H-padB+16)}" text-anchor="middle">${a}歳</text>`;
+      xlab+=`<text class="curve-txt" font-size="${FS_AX}" x="${x(i).toFixed(1)}" y="${(H-padB+18)}" text-anchor="middle">${a}歳</text>`;
     }
   });
   // 端点の値ラベル（p75 上位線の終点・p50 中央線の終点）
@@ -1593,8 +1643,8 @@ function renderCurve(e){
     + `<polyline class="curve-line" points="${pts(p50s)}"/>`
     + dots(p75s)
     + dots(p50s)
-    + `<text class="curve-txt val" x="${(x(n-1)-2).toFixed(1)}" y="${(y(endP50)+(endP75>=endP50?14:-7)).toFixed(1)}" text-anchor="end">${fmt(endP50)}万</text>`
-    + `<text class="curve-txt val" x="${(x(n-1)-2).toFixed(1)}" y="${(y(endP75)-7).toFixed(1)}" text-anchor="end" style="fill:var(--accent)">${fmt(endP75)}万</text>`
+    + `<text class="curve-txt val" font-size="${FS_VAL}" x="${(x(n-1)-2).toFixed(1)}" y="${(y(endP50)+(endP75>=endP50?18:-9)).toFixed(1)}" text-anchor="end">${fmt(endP50)}万</text>`
+    + `<text class="curve-txt val" font-size="${FS_VAL}" x="${(x(n-1)-2).toFixed(1)}" y="${(y(endP75)-9).toFixed(1)}" text-anchor="end" style="fill:var(--accent)">${fmt(endP75)}万</text>`
     + `</svg>`;
   host.innerHTML=svg;
   // 凡例（中央 p50 ／ 上位 p75）。p75 は上限の目安である旨を明示。
@@ -1774,6 +1824,34 @@ function renderCalcBreakdown(e){
     +`<div class="cb-cav">${cav.map(c=>'※ '+c).join('<br>')}</div>`;
 }
 
+/* ===== 段階3：モバイル企業行トグル =====
+   余剰行（ROW_VISIBLE 件超）が無ければボタンを隠す。展開状態（aria-expanded）は維持し、
+   その状態に合わせて row-extra 行の hidden 属性を一括で付け外しする。
+   CSS は ≤640px のみ折りたたみを効かせ、≥641px/印刷では常に全件表示する。 */
+function syncRowMore(total){
+  const btn=$('btn-rowmore'); if(!btn) return;
+  const extra=Math.max(0, total-ROW_VISIBLE);
+  if(extra<=0){ btn.hidden=true; return; }
+  btn.hidden=false;
+  const expanded = btn.getAttribute('aria-expanded')==='true';
+  applyRowExtraHidden(!expanded);   // 折りたたみ中は hidden を付与
+  btn.textContent = expanded ? '上位のみ表示' : `他${extra}件を表示`;
+}
+// row-extra 行に hidden 属性を一括付け外し（render で行が作り直されるたびに呼ぶ）。
+function applyRowExtraHidden(hide){
+  document.querySelectorAll('#companies tr.row-extra').forEach(tr=>{ tr.hidden=!!hide; });
+}
+// トグル本体（addEventListener から呼ぶ・onclick 不使用＝CSP順守）。
+function toggleRowMore(){
+  const btn=$('btn-rowmore'); if(!btn) return;
+  const expanded = btn.getAttribute('aria-expanded')==='true';
+  const next=!expanded;
+  btn.setAttribute('aria-expanded', String(next));
+  applyRowExtraHidden(!next);
+  const extra=document.querySelectorAll('#companies tr.row-extra').length;
+  btn.textContent = next ? '上位のみ表示' : `他${extra}件を表示`;
+}
+
 function render(){
   // render は innerHTML を総入れ替えするため、開いている出典ポップが古い DOM を指したまま
   // 取り残される参照ずれを防ぐ。冒頭で開いているポップを畳む（focus 復帰はしない＝入力操作の流れを邪魔しない）。
@@ -1784,7 +1862,8 @@ function render(){
   // bigfig＝p50（中央値）。mid===p50 だが意味を明示して p50 を採用。
   smid.innerHTML=fmt(p50)+'<span class="unit">万円</span>';
   // Wave1：percentile を主役にしたレンジ文。「多くの人(p25〜p75)／中央(p50)／参考上限(p90)」を明示。
-  $('salrange').textContent=`多くの人(p25〜p75) ${fmt(p25)}〜${fmt(p75)}万 ／ 中央 ${fmt(p50)}万 ／ 参考上限(p90) ${fmt(p90)}万`;
+  // 段階2 render A：中央値を <b class="sr-mid"> で視覚強調。挿入は fmt() 整形済みの数値のみ（XSS無）。
+  $('salrange').innerHTML=`多くの人(p25〜p75) ${fmt(p25)}〜${fmt(p75)}万 ／ 中央 <b class="sr-mid">${fmt(p50)}万</b> ／ 参考上限(p90) ${fmt(p90)}万`;
   $('examplenote').style.display = touched ? 'none' : '';
   // 変化フィードバック：中央値が動いたら一瞬発光
   if(prevMid!==null && Math.round(mid)!==Math.round(prevMid)){
@@ -1873,14 +1952,22 @@ function render(){
       +` aria-label="${esc(roleLabel[sel.role]||'')}の求人を年収${minMan}万以上で探す（新規タブ・自動送信なし）">`
       +`<span aria-hidden="true">🔎</span> この条件で求人を探す（${minMan}万〜）</a>`;
   };
-  $('companies').innerHTML=rows.map((c,i)=>`
-    <tr${i===0?' class="toprow"':''} aria-label="${esc(c.name)}">
-      <td class="cell-name"><b>${esc(c.name)}</b><span class="ex">${esc(c.ex)}</span></td>
+  // 段階3：モバイルのスクロール削減。上位4件は常時表示、5件目以降は row-extra＋hidden で
+  // 既定折りたたみ（≤640px のみ）。トグルで開閉。PC/印刷では CSS が必ず全件表示する。
+  $('companies').innerHTML=rows.map((c,i)=>{
+    const cls=[]; if(i===0) cls.push('toprow'); if(i>=ROW_VISIBLE) cls.push('row-extra');
+    const clsAttr=cls.length?` class="${cls.join(' ')}"`:'';
+    const hid=(i>=ROW_VISIBLE)?' hidden':'';
+    return `
+    <tr${clsAttr}${hid} aria-label="${esc(c.name)}">
+      <td class="cell-name"><b class="co-name">${esc(c.name)}</b><span class="ex">${esc(c.ex)}</span></td>
       <td class="mkt cell-stack" data-label="市場レンジ"><span class="td-label sr-only">市場レンジ：</span>${esc(c.range)}<br>${srcBadge(c.srcId)}</td>
-      <td class="sal cell-stack" data-label="あなたの想定"><span class="td-label sr-only">あなたの想定：</span>${fmt(c.clo)}–${fmt(c.chi)}<br><span class="ex">中央 ${fmt(c.cmid)}万</span><br>${tierBadgeInline('tool')}</td>
+      <td class="sal cell-stack" data-label="あなたの想定"><span class="td-label sr-only">あなたの想定：</span>${fmt(c.clo)}–${fmt(c.chi)}<br><span class="ex">中央 ${fmt(c.cmid)}万</span></td>
       <td data-label="相性"><span class="td-label sr-only">相性：</span><span class="pill ${fitClass(c.fitScore)}">${fitText(c.fitScore)}</span></td>
       <td class="cell-gap" data-label="次の一歩"><span class="td-label sr-only">次の一歩：</span>${gapTagsFor(c)}${jobLinkFor(c)}</td>
-    </tr>`).join('');
+    </tr>`}).join('');
+  // 段階3：トグルボタンの表示/ラベルを更新（余剰行が無ければ隠す。展開状態は維持）。
+  syncRowMore(rows.length);
 
   // スキル k を追加したときの「実効ゲイン」（中央値の実増分・万円）。
   // premCap 飽和時は加点が頭打ちになるため、追加してももう増えないなら 0 を返す（誠実さの核心）。
