@@ -221,13 +221,33 @@ function ageToBand(age) {
   return age < 30 ? "20代" : age < 40 ? "30代" : age < 50 ? "40代" : age < 60 ? "50代" : "60代";
 }
 
-// ---- index.html aiPremiumFactor と同一（ds/mle/genai のみ・関連スキル保有率で逓減・cap 頭打ち）----
+// ---- index.html aiPremiumBaseMul と同一（byAgeBand を代表年齢の点とみなし age で線形補間。45歳超は55歳で1.0へ）----
+const AI_BAND_REP = { "20代": 25, "30代": 35, "40代": 45 };
+const AI_RAMP_END_AGE = 55;
+function aiPremiumBaseMul(age) {
+  const AP = D.aiPremium || {};
+  const pts = [];
+  for (const b of (AP.byAgeBand || [])) {
+    const rep = AI_BAND_REP[b && b.band];
+    if (rep != null && b.mul != null) pts.push({ age: rep, mul: b.mul });
+  }
+  if (!pts.length) return 1.0;
+  pts.sort((a, b) => a.age - b.age);
+  const lo = pts[0], hi = pts[pts.length - 1];
+  if (age <= lo.age) return lo.mul;
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1], b = pts[i];
+    if (age <= b.age) { const t = (age - a.age) / (b.age - a.age); return a.mul + (b.mul - a.mul) * t; }
+  }
+  if (age >= AI_RAMP_END_AGE) return 1.0;
+  const t = (age - hi.age) / (AI_RAMP_END_AGE - hi.age);
+  return hi.mul + (1.0 - hi.mul) * t;
+}
+// ---- index.html aiPremiumFactor と同一（ds/mle/genai のみ・関連スキル保有率で逓減・cap 頭打ち。base は年齢補間）----
 function aiPremiumFactor(age, role, skillsSet) {
   if (!["ds", "mle", "genai"].includes(role)) return { mul: 1.0, applied: false };
   const AP = D.aiPremium || {};
-  const band = ageToBand(age);
-  const found = (AP.byAgeBand || []).find((b) => b.band === band);
-  const base = (found && found.mul != null) ? found.mul : 1.0;
+  const base = aiPremiumBaseMul(age);
   const cap = AP.cap != null ? AP.cap : 1.20;
   const relCount = ["genai", "agent", "mlops"].filter((k) => skillsSet.has(k)).length;
   const rel = Math.min(relCount / 3, 1);
@@ -414,16 +434,15 @@ const SKILL_PATTERNS = [
   }
 }
 
-// (W1-7) aiPremiumFactor の rel が関連スキル数で逓増（0個→1.0、3個→band の mul）
+// (W1-7) aiPremiumFactor の rel が関連スキル数で逓増（0個→1.0、3個→補間 base の mul）
+//   ※ #3 で base を年齢補間（aiPremiumBaseMul）に変更。期待値も離散 band ではなく補間 base から導く。
 {
   const REL = ["genai", "agent", "mlops"];
   for (const role of CORE_ROLES) {
     for (let age = 22; age <= 62; age += 5) {
-      const band = ageToBand(age);
-      const found = (D.aiPremium.byAgeBand || []).find((b) => b.band === band);
       const cap = D.aiPremium.cap != null ? D.aiPremium.cap : 1.20;
-      const bandBase = (found && found.mul != null) ? found.mul : 1.0;
-      const expectedFull = Math.min(bandBase, cap); // rel=1 のとき mul=min(bandBase,cap)
+      const interpBase = aiPremiumBaseMul(age);       // 年齢で線形補間した base 倍率
+      const expectedFull = Math.min(interpBase, cap); // rel=1 のとき mul=min(interpBase,cap)
 
       // 0個 → 1.0
       const m0 = aiPremiumFactor(age, role, toSet([])).mul;
@@ -433,11 +452,11 @@ const SKILL_PATTERNS = [
       );
       C();
 
-      // 3個（フル）→ min(bandBase, cap)
+      // 3個（フル）→ min(interpBase, cap)
       const m3 = aiPremiumFactor(age, role, toSet(REL)).mul;
       assert.ok(
         Math.abs(m3 - expectedFull) < 1e-9,
-        `(W1-7) rel=1(フル) 違反: role=${role}, age=${age}(${band}) で関連スキル3個の aiMul=${m3} が min(bandの mul=${bandBase}, cap=${cap})=${expectedFull} と一致しません`,
+        `(W1-7) rel=1(フル) 違反: role=${role}, age=${age} で関連スキル3個の aiMul=${m3} が min(補間base=${interpBase.toFixed(4)}, cap=${cap})=${expectedFull.toFixed(4)} と一致しません`,
       );
       C();
 

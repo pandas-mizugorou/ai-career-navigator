@@ -233,10 +233,23 @@ try {
   if (D.aiPremium) {
     if (D.aiPremium.srcId && !sourceIds.has(D.aiPremium.srcId)) err(`(g2) aiPremium.srcId が sources に存在しません`);
     if (!inRange(D.aiPremium.cap, [1.0, 1.4])) err(`(g2) aiPremium.cap ${D.aiPremium.cap} が [1.0,1.4] 外`);
-    (D.aiPremium.byAgeBand || []).forEach((b, i) => {
-      if (!(isNum(b.mul) && b.mul >= 1.0 && b.mul <= D.aiPremium.cap))
-        err(`(g2) aiPremium.byAgeBand[${i}].mul ${b.mul} が [1.0, cap=${D.aiPremium.cap}] 外（過大評価防止）`);
-    });
+    // byAgeBand は配列であること（index.html aiPremiumBaseMul が forEach で代表年齢の点に変換する前提）。
+    if (!Array.isArray(D.aiPremium.byAgeBand)) {
+      err(`(g2) aiPremium.byAgeBand は配列である必要があります: ${JSON.stringify(D.aiPremium.byAgeBand)}`);
+    } else {
+      D.aiPremium.byAgeBand.forEach((b, i) => {
+        if (!(isNum(b.mul) && b.mul >= 1.0 && b.mul <= D.aiPremium.cap))
+          err(`(g2) aiPremium.byAgeBand[${i}].mul ${b.mul} が [1.0, cap=${D.aiPremium.cap}] 外（過大評価防止）`);
+      });
+      // (g2) band キーの存在検証：#3 で byAgeBand を「年代の代表年齢の点」とみなし age で線形補間する構造へ変更したため、
+      //   index.html aiPremiumBaseMul は band キー("20代"/"30代"/"40代")で代表年齢を引く。月次更新でこのキーが改名・欠落すると、
+      //   該当点が点列から落ち、無言で aiMul=1.0（上乗せ消滅）に劣化する。最低限この3キーの存在を必須化して防ぐ。
+      const REQUIRED_BANDS = ["20代", "30代", "40代"];
+      const haveBands = new Set(D.aiPremium.byAgeBand.map((b) => b && b.band));
+      const missingBands = REQUIRED_BANDS.filter((k) => !haveBands.has(k));
+      if (missingBands.length)
+        err(`(g2) aiPremium.byAgeBand に必須の年代キー {${missingBands.join(",")}} がありません（index.html の aiPremiumBaseMul が代表年齢へ変換できず aiMul=1.0 に無言劣化します。キー改名は禁止）`);
+    }
   }
   if (D.raiseOnChange) {
     const ro = D.raiseOnChange;

@@ -1283,14 +1283,40 @@ function ageToBand(age){
   return age<30?"20代":age<40?"30代":age<50?"40代":age<60?"50代":"60代";
 }
 
+// aiPremium.byAgeBand（離散ステップ）を「年代の代表年齢の点」とみなし、年齢で線形補間した base 倍率を返す。
+// 旧実装は age<30/<40/<50 の階段で、年代境界（29→30, 49→50）に不連続な崖があり、キャリアカーブ(age+0..7)が
+// 境界をまたぐと p50 が段差状に跳ねた。これを解消するため：
+//   20代→25歳 / 30代→35歳 / 40代→45歳 の (age, mul) に変換し、その間を線形補間。
+//   25歳未満は20代側にクランプ。45歳超は45歳の mul から 55歳で 1.0 へ線形に戻す（50代は出典に無いので1.0へ収束）。
+// 月次更新で byAgeBand のキーが想定外（20代/30代/40代以外）になっても、存在するものだけで点列を組み壊れない。
+const AI_BAND_REP = { "20代":25, "30代":35, "40代":45 };   // 年代→代表年齢（補間の x）
+const AI_RAMP_END_AGE = 55;                                  // 45歳超は 55歳で mul=1.0 へ収束
+function aiPremiumBaseMul(age){
+  const AP=D.aiPremium||{};
+  const pts=[];
+  for(const b of (AP.byAgeBand||[])){
+    const rep=AI_BAND_REP[b && b.band];
+    if(rep!=null && b.mul!=null) pts.push({age:rep, mul:b.mul});
+  }
+  if(!pts.length) return 1.0;
+  pts.sort((a,b)=>a.age-b.age);
+  const lo=pts[0], hi=pts[pts.length-1];
+  if(age<=lo.age) return lo.mul;                         // 25歳未満は20代側にクランプ
+  for(let i=1;i<pts.length;i++){                         // 代表年齢間を線形補間（[25,45]）
+    const a=pts[i-1], b=pts[i];
+    if(age<=b.age){ const t=(age-a.age)/(b.age-a.age); return a.mul+(b.mul-a.mul)*t; }
+  }
+  if(age>=AI_RAMP_END_AGE) return 1.0;                   // 50代後半以降は出典外＝上乗せなし
+  const t=(age-hi.age)/(AI_RAMP_END_AGE-hi.age);         // 45歳超→55歳で 1.0 へ線形に戻す
+  return hi.mul+(1.0-hi.mul)*t;
+}
 // AI/生成AI職の「ソフトウェア作成者(土台)比」上乗せ係数。
 // 対象職種(ds/mle/genai)のみ・関連スキル保有率で逓減・cap で頭打ち（過大評価回避）。
+// base は年代境界の段差を消すため aiPremiumBaseMul(age) で年齢補間する（relCount/3 逓減と cap 頭打ちは維持）。
 function aiPremiumFactor(age, role, skillsSet){
   if(!['ds','mle','genai'].includes(role)) return {mul:1.0, applied:false};
   const AP=D.aiPremium||{};
-  const band=ageToBand(age);
-  const found=(AP.byAgeBand||[]).find(b=>b.band===band);
-  const base=(found&&found.mul!=null)?found.mul:1.0;
+  const base=aiPremiumBaseMul(age);
   const cap=AP.cap!=null?AP.cap:1.20;
   const relCount=['genai','agent','mlops'].filter(k=>skillsSet.has(k)).length;
   const rel=Math.min(relCount/3,1);
@@ -1353,19 +1379,35 @@ function ageBandForExp(y){
   idx = Math.min(idx, bands.length-1);
   return bands[idx];
 }
+// 年齢 → ageBands の年代を band ラベル一致で引く（#4：age 入力時は経験フォールバックでなく age 基準の年代帯）。
+// ageToBand(age) と同じ区切りで "20代".."60代" を得て、ageBands に該当ラベルがあればそれを返す。
+// 該当が無い（例: 60代＝出典の ageBands に無い）場合は最後のバンドにクランプ（ageBandForExp と同じ端クランプ思想）。
+function ageBandForAge(age){
+  const bands=D.ageBands||[];
+  if(!bands.length) return null;
+  const label=ageToBand(age);
+  const hit=bands.find(b=>b.band===label);
+  return hit || bands[bands.length-1];
+}
 function renderAgeRange(mid){
   const el=$('agerange'); if(!el) return;
-  const b=ageBandForExp(sel.exp);
+  // #4：age 入力時は age 基準の年代帯（実測帯と年齢が直接対応）。未入力時のみ経験からの保守推定にフォールバック。
+  const byAge=Number.isFinite(sel.age);
+  const b=byAge ? ageBandForAge(sel.age) : ageBandForExp(sel.exp);
   if(!b){ el.innerHTML=''; return; }
   // あなたの中央値が実測帯の上/中/下か（±ゆとりは取らず素直に判定）
   let pos, cls;
   if(mid>b.hi){ pos='実測帯より上'; cls='hi'; }
   else if(mid<b.lo){ pos='実測帯より下'; cls='lo'; }
   else { pos='実測帯の中ほど'; cls='mid'; }
+  // 注記：age 由来なら「年齢から該当年代を選択」、経験フォールバックなら従来どおり「経験から保守推定」と正直に出し分け。
+  const cav=byAge
+    ? '※入力年齢から該当年代を選択（実測帯は実在の年代別集計／本ツール推定の位置づけ判定）。'
+    : '※経験年数から年代を保守的に推定（経験≠年齢／本ツール推定）。出典は実在の年代別集計です。';
   el.innerHTML=`<span>同年代の実測レンジ（${esc(b.band)}）</span>`
     +`<span class="ar-val">${b.lo}–${b.hi}万</span> ${srcBadge(b.srcId)}`
     +`<span class="ar-pos ${cls}">あなたの中央値は${pos}</span>`
-    +`<span class="ar-cav">※経験年数から年代を保守的に推定（経験≠年齢／本ツール推定）。出典は実在の年代別集計です。</span>`;
+    +`<span class="ar-cav">${cav}</span>`;
 }
 // スキル選択の動的サマリ（選択中◯個・加点合計+◯%・premCap 到達で頭打ち明示）。
 function renderSkillSum(prem,premRaw,capped){
@@ -1526,18 +1568,33 @@ function renderCurve(e){
   }
 }
 
-/* ===== Batch5-6：目標年収の逆算（貪欲法） =====
+/* ===== Batch5-6：目標年収の逆算（貪欲法・age-anchored に統一） =====
    ①未取得スキルを skillPrem 降順で premCap まで積み、到達できるか判定。
-   ②届かなければ経験+N年で baseByExp の伸びを使い到達年数を逆算。
-   ③それでも届かなければ企業タイプ（companies.mul の最大）変更でも判定し、最終的に誠実に「届きにくい」と返す。 */
+   ②届かなければ「経験+N年（=年齢も+N年に連動）」で年齢アンカー p50 の伸びを使い到達年数を逆算。
+   ③それでも届かなければ企業タイプ（companies.mul の最大）変更でも判定し、最終的に誠実に「届きにくい」と返す。
+   【#1 正確性改修 2026-06】②の逆算を旧 baseByExp(expCurve) スケールから anchoredMidMaxSkill()
+   （年齢アンカー p50 系・estimatePercentiles と同一の合成順）に置換。現状値(base＝aiMul/locationF 込み)と
+   同一スケールに揃うため「スキル上限で届かない額が、非現実的に短い経験年数で到達」という矛盾を解消する。
+   ①の skillMax と ③の company も base 由来＝既に age-anchored なので、ボックス全体が単一の p50 スケールで一貫する。 */
+// 任意 (age, exp) における「最大スキル(premCap)前提」の年齢アンカー p50（万円）。
+// estimatePercentiles / percentilesAtAge と同一の合成（anchor × expF × roleF × (1+cap) × aiMul × locationF）。
+// 現状の sel.role / sel.location を保持したまま、年齢と経験だけを動かして到達可能性を測る。
+function anchoredMidMaxSkill(age, exp){
+  const A=anchorAt(age);
+  const stdExp=Math.max(0, age-22);
+  const expF=clamp(1 + 0.015*(exp - stdExp), 0.88, 1.15);
+  const roleF=D.model.roleMul[sel.role]||1;
+  const ai=aiPremiumFactor(age, sel.role, sel.skills);   // 最大スキル時は関連スキル保有で rel が上がる想定
+  const locationF=(D.model.locationMul && sel.location)?(D.model.locationMul[sel.location] ?? 1.0):1.0;
+  return A.p50 * expF * roleF * (1+D.model.premCap) * ai.mul * locationF;
+}
 function renderTargetBack(base, prem, premRaw){
   const el=$('targetbox'); if(!el) return;
   const T=targetVal();
   if(!T){ el.style.display='none'; el.innerHTML=''; return; }
   el.classList.remove('reach','miss');
-  const rm=D.model.roleMul[sel.role]||1;
   const cap=D.model.premCap;
-  const curMid=base*(1+prem);   // = baseByExp(exp)*roleMul*(1+実効加点)
+  const curMid=base*(1+prem);   // = 年齢アンカー p50（現状値・base＝anchor×expF×roleF×aiMul×locationF）× (1+実効加点)
   // 既に到達済み
   if(curMid>=T-0.5){
     el.classList.add('reach');
@@ -1567,18 +1624,22 @@ function renderTargetBack(base, prem, premRaw){
       +`<span class="tb-cav">※貪欲法でスキル加点を上限+${Math.round(cap*100)}%まで積んだ試算。実オファーは交渉・評価で変動します。</span>`;
     el.style.display=''; return;
   }
-  // スキルを上限まで積んだ場合の中央値（ここから先は経験・企業で詰める）
+  // スキルを上限まで積んだ場合の中央値（ここから先は経験・企業で詰める）。
+  // = anchoredMidMaxSkill(startAge, sel.exp)（現年齢・最大スキル）＝base*(1+cap)。age-anchored 系で一貫。
   const midSkillMax=base*(1+cap);
   const skillNote = picked.length
     ? `スキルを上限(+${Math.round(cap*100)}%)まで積んでも ${fmt(midSkillMax)}万`
     : `現スキルのみでは ${fmt(curMid)}万`;
-  // ②経験+N年（最大伸びしろ習得＝premMax 前提で、到達に必要な追加年数を baseByExp で逆算）
+  // ②経験+N年（=年齢も+N年に連動・最大スキル習得前提）。年齢アンカー p50 系で到達に必要な追加年数を逆算。
+  //   旧 baseByExp(expCurve) 混在を廃止し、現状値(base)と同一スケールの anchoredMidMaxSkill で測る（#1 矛盾解消）。
+  //   年齢は ageAnchor 上端(62)でクランプ（到達不能なら needYears=null＝「経験を重ねても難しい」と正直に返す）。
+  const startAge = Number.isFinite(sel.age) ? sel.age : ageFromExp(sel.exp);
   let needYears=null;
   for(let add=1; add<=20; add++){
-    const y=Math.min(20, sel.exp+add);
-    const m=baseByExp(y)*rm*(1+cap);
+    const age=Math.min(62, startAge+add);
+    const m=anchoredMidMaxSkill(age, sel.exp+add);
     if(m>=T-0.5){ needYears=add; break; }
-    if(y>=20) break;
+    if(age>=62) break;   // 年齢上端に達したらこれ以上アンカーは伸びない＝逆算打ち切り
   }
   // ③企業タイプ変更（最も高い mul の企業に乗る＝最大伸びしろ習得時）
   const bestMul=Math.max(...(D.companies||[{mul:1}]).map(c=>c.mul||1));
@@ -1589,12 +1650,12 @@ function renderTargetBack(base, prem, premRaw){
   let body=`<div class="tb-head"><span aria-hidden="true">🧭</span>目標 <span class="tb-amt">${fmt(T)}万</span> は現条件では推定上 届きにくい</div>`;
   body+=`<span style="display:block;color:#cdd7f5">${skillNote}（目標まで あと約 ${fmt(Math.max(0,T-midSkillMax))}万）。次のいずれかが必要：</span>`;
   body+='<ol>';
-  if(needYears!=null) body+=`<li>経験 <b>+${needYears}年</b>（最大スキル習得前提・想定中央が目標に到達）</li>`;
-  else body+=`<li>経験を重ねても本職種の推定カーブ（最大20年）では単独到達は難しい</li>`;
+  if(needYears!=null) body+=`<li>経験 <b>+${needYears}年</b>（年齢も+${needYears}歳に連動・最大スキル習得前提で想定中央が目標に到達）</li>`;
+  else body+=`<li>経験（年齢）を重ねても、年齢別実測の中央値カーブ上は単独到達が難しい（40代後半以降は実測上いったん下降します）</li>`;
   if(reachByCompany && bestCo) body+=`<li>より高単価の企業タイプ（<b>${esc(bestCo.name)}</b>・市場 ${esc(bestCo.range)}）へ移る（最大スキル習得時に到達域）</li>`;
   else body+=`<li>職種軸の変更（より単価の高い職種・領域への転換）`+`</li>`;
   body+='</ol>';
-  body+=`<span class="tb-cav">※baseByExp / roleMul / companies.mul を使った本ツール推定の逆算。盛らず「届きにくい」と正直に提示します。実オファーは交渉・評価で変動します。</span>`;
+  body+=`<span class="tb-cav">※年齢アンカー p50（年齢別の実測中央値）× roleMul × スキル上限 × companies.mul を使った本ツール推定の逆算（現状値と同一スケール）。盛らず「届きにくい」と正直に提示します。実オファーは交渉・評価で変動します。</span>`;
   el.innerHTML=body;
   el.style.display='';
 }
