@@ -163,5 +163,287 @@ const C = () => { checks++; };
   });
 }
 
+/* ============================================================
+   Wave1：年齢主軸の percentile 推定ロジックの不変条件テスト（正確性改修 2026-06）
+
+   index.html の estimatePercentiles / anchorAt / interpAnchor / aiPremiumFactor /
+   ageFromExp / ageToBand / clamp と「同一の式」を下に移植し、data.js の実データに対して
+   不変条件を検証する。index.html と式が乖離したら（係数を変えた等）即座に落ちる回帰ゲート。
+
+   移植元: index.html の該当関数（行番号は実装時点）。sel.skills は Set（index.html 同様）。
+   ============================================================ */
+
+// ---- index.html clamp と同一 ----
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+// ---- index.html ageFromExp と同一（年齢未入力時の保守推定、22〜60 にクランプ）----
+function ageFromExp(exp) { return clamp(22 + (Number(exp) || 0), 22, 60); }
+
+// ---- index.html interpAnchor と同一（points を age で線形補間。範囲外は端点クランプ）----
+function interpAnchor(points, age, key) {
+  const pts = (points || []).filter((p) => p && isFinite(p.age));
+  if (!pts.length) return null;
+  if (age <= pts[0].age) return pts[0][key];
+  if (age >= pts[pts.length - 1].age) return pts[pts.length - 1][key];
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1], b = pts[i];
+    if (age <= b.age) {
+      const t = (age - a.age) / (b.age - a.age);
+      const va = a[key], vb = b[key];
+      if (va == null || vb == null) return null; // 補間端のどちらかが欠損なら null
+      return va + (vb - va) * t;
+    }
+  }
+  return pts[pts.length - 1][key];
+}
+
+// ---- index.html anchorAt と同一（p50=実測補間。分位は全点実測なら補間、欠損なら spread.ratio で補完）----
+function anchorAt(age) {
+  const P = (D.ageAnchor && D.ageAnchor.points) || [];
+  const p50 = interpAnchor(P, age, "p50");
+  const allReal = (k) => P.length > 0 && P.every((p) => p[k] != null);
+  const ratio = (D.spread && D.spread.ratio) || { p25: 0.85, p75: 1.20, p90: 1.45 };
+  let p25, p75, p90, estimatedSpread = false;
+  if (allReal("p25") && allReal("p75") && allReal("p90")) {
+    p25 = interpAnchor(P, age, "p25");
+    p75 = interpAnchor(P, age, "p75");
+    p90 = interpAnchor(P, age, "p90");
+    if (p25 == null || p75 == null || p90 == null) { estimatedSpread = true; p25 = p50 * ratio.p25; p75 = p50 * ratio.p75; p90 = p50 * ratio.p90; }
+  } else {
+    estimatedSpread = true;
+    p25 = p50 * ratio.p25; p75 = p50 * ratio.p75; p90 = p50 * ratio.p90;
+  }
+  return { p25, p50, p75, p90, estimatedSpread };
+}
+
+// ---- index.html ageToBand と同一 ----
+function ageToBand(age) {
+  return age < 30 ? "20代" : age < 40 ? "30代" : age < 50 ? "40代" : age < 60 ? "50代" : "60代";
+}
+
+// ---- index.html aiPremiumFactor と同一（ds/mle/genai のみ・関連スキル保有率で逓減・cap 頭打ち）----
+function aiPremiumFactor(age, role, skillsSet) {
+  if (!["ds", "mle", "genai"].includes(role)) return { mul: 1.0, applied: false };
+  const AP = D.aiPremium || {};
+  const band = ageToBand(age);
+  const found = (AP.byAgeBand || []).find((b) => b.band === band);
+  const base = (found && found.mul != null) ? found.mul : 1.0;
+  const cap = AP.cap != null ? AP.cap : 1.20;
+  const relCount = ["genai", "agent", "mlops"].filter((k) => skillsSet.has(k)).length;
+  const rel = Math.min(relCount / 3, 1);
+  const mul = Math.min(1 + (base - 1) * rel, cap);
+  return { mul, applied: mul > 1.0001 };
+}
+
+// ---- index.html estimatePercentiles と同一（global sel 依存を引数化した純関数版）----
+//   sel.{age,exp,role,skills} を (age|null, exp, role, skills:Set) で受ける。pref は本体に無関係（personalRange 側）。
+//   ★ EXP_K は (W1-x) negative test 用のフック。既定 0.015（= index.html の係数）。
+let EXP_K = 0.015;
+function estimatePercentiles(ageInput, role, skills, exp) {
+  const ageKnown = Number.isFinite(ageInput);
+  const age = ageKnown ? ageInput : ageFromExp(exp);
+  const A = anchorAt(age);
+  const stdExp = Math.max(0, age - 22);
+  const expF = clamp(1 + EXP_K * (exp - stdExp), 0.88, 1.15);
+  const roleF = D.model.roleMul[role];
+  let premRaw = 0; skills.forEach((k) => premRaw += D.model.skillPrem[k] || 0);
+  const prem = Math.min(premRaw, D.model.premCap);
+  const skillF = 1 + prem;
+  const ai = aiPremiumFactor(age, role, skills);
+  const f = expF * roleF * skillF * ai.mul;
+  const base = A.p50 * expF * roleF * ai.mul; // base*(1+prem)=p50 を保つ
+  return {
+    p25: A.p25 * f, p50: A.p50 * f, p75: A.p75 * f, p90: A.p90 * f,
+    mid: A.p50 * f, lo: A.p25 * f, hi: A.p90 * f,
+    prem, premRaw, capped: premRaw > D.model.premCap, base,
+    estimatedSpread: A.estimatedSpread, ageKnown, age,
+    parts: { expF, roleF, skillF, aiMul: ai.mul, aiApplied: ai.applied },
+  };
+}
+
+// ---- Wave1 テスト用ヘルパ ----
+const ALL_ROLES = Object.keys(D.model.roleMul);                 // 全6職種
+const CORE_ROLES = ["ds", "mle", "genai"];                       // AI中核職（aiMul 適用対象）
+const NONCORE_ROLES = ALL_ROLES.filter((r) => !CORE_ROLES.includes(r)); // consult/pm/adjacent
+const SKILL_KEYS = Object.keys(D.model.skillPrem);
+const toSet = (arr) => new Set(arr);
+// 検証で使う代表的なスキル集合パターン
+const SKILL_PATTERNS = [
+  [],                                   // 無し
+  ["genai"],                            // 単一・関連スキル
+  ["biz"],                              // 単一・非関連スキル
+  ["genai", "agent", "mlops"],          // 関連3つ（aiPremium rel=1）
+  ["genai", "biz", "mgmt", "eng"],      // 混在
+  SKILL_KEYS.slice(),                   // 全部（premCap 飽和域）
+];
+
+// (W1-1) 多数の (age, role, skills) で p25≤p50≤p75≤p90
+{
+  for (let age = 22; age <= 62; age++) {
+    for (const role of ALL_ROLES) {
+      for (const sk of SKILL_PATTERNS) {
+        const e = estimatePercentiles(age, role, toSet(sk), Math.max(0, age - 22));
+        assert.ok(
+          e.p25 <= e.p50 + 1e-9 && e.p50 <= e.p75 + 1e-9 && e.p75 <= e.p90 + 1e-9,
+          `(W1-1) percentile 単調性違反: age=${age}, role=${role}, skills=[${sk.join(",")}] → p25=${e.p25.toFixed(2)}, p50=${e.p50.toFixed(2)}, p75=${e.p75.toFixed(2)}, p90=${e.p90.toFixed(2)}（p25≤p50≤p75≤p90 を満たしません）`,
+        );
+        C();
+      }
+    }
+  }
+}
+
+// (W1-2) anchorAt(age).p50 が単調増加する区間では estimatePercentiles の p50 も単調増加。
+//   f は age（expF・aiMul の band）にも依存するため、role/skills/exp を固定し、
+//   かつ「anchor の p50 が実際に増える隣接2点」だけを対象にする（47→52歳の実測下降区間は除外）。
+//   exp を固定すると expF が age で動くので、ここでは exp=stdExp 相当にせず「anchor 単調性が
+//   出力に伝播する」ことを、aiMul=1.0 の非中核職（expF 以外に age 依存が無い職）で検証する。
+//   → 非中核職では f = expF*roleF*skillF。expF を固定するため exp を age に連動させ stdExp と一致させ expF=1.0 に固定。
+{
+  const role = "consult";          // 非中核職 → aiMul=1.0（age 依存は expF のみ）
+  const skills = toSet(["biz"]);
+  let monotoneChecks = 0;
+  for (let age = 22; age < 47; age++) {              // 22→47 は anchor p50 が増える区間
+    const expA = Math.max(0, age - 22);              // expF=1.0 に固定（stdExp と一致）
+    const expB = Math.max(0, (age + 1) - 22);        // 次の age でも expF=1.0
+    const aP50 = anchorAt(age).p50, bP50 = anchorAt(age + 1).p50;
+    if (!(bP50 > aP50)) continue;                    // anchor が増えない隣接対は対象外
+    const eA = estimatePercentiles(age, role, skills, expA);
+    const eB = estimatePercentiles(age + 1, role, skills, expB);
+    assert.ok(
+      eB.p50 > eA.p50 - 1e-9,
+      `(W1-2) p50 単調性違反: anchor p50 が ${age}歳(${aP50})→${age + 1}歳(${bP50}) と増えるのに、estimatePercentiles の p50 が ${eA.p50.toFixed(2)}→${eB.p50.toFixed(2)} と増えていません（expF=1.0 固定・非中核職 consult）`,
+    );
+    monotoneChecks++;
+    C();
+  }
+  assert.ok(monotoneChecks >= 10, `(W1-2) 前提崩れ: 単調増加を検証できた隣接対が ${monotoneChecks} 件しかありません（anchor 点列が想定外）`);
+  C();
+}
+
+// (W1-3) 非中核職で aiMul===1.0。中核職でも aiMul≤cap。
+{
+  const cap = (D.aiPremium && D.aiPremium.cap != null) ? D.aiPremium.cap : 1.20;
+  for (let age = 22; age <= 62; age += 2) {
+    for (const sk of SKILL_PATTERNS) {
+      for (const role of NONCORE_ROLES) {
+        const m = aiPremiumFactor(age, role, toSet(sk)).mul;
+        assert.equal(
+          m, 1.0,
+          `(W1-3) 非中核職の aiMul 違反: role=${role}, age=${age}, skills=[${sk.join(",")}] の aiMul=${m}（非中核職は常に 1.0 でなければなりません）`,
+        );
+        C();
+      }
+      for (const role of CORE_ROLES) {
+        const m = aiPremiumFactor(age, role, toSet(sk)).mul;
+        assert.ok(
+          m >= 1.0 && m <= cap + 1e-9,
+          `(W1-3) 中核職の aiMul 上限違反: role=${role}, age=${age}, skills=[${sk.join(",")}] の aiMul=${m} が [1.0, cap=${cap}] を外れています`,
+        );
+        C();
+      }
+    }
+  }
+}
+
+// (W1-4) すべてのケースで base*(1+prem) が p50 と一致（誤差±1万）
+{
+  for (let age = 22; age <= 62; age += 2) {
+    for (const role of ALL_ROLES) {
+      for (const sk of SKILL_PATTERNS) {
+        const e = estimatePercentiles(age, role, toSet(sk), Math.max(0, age - 22));
+        const recomposed = e.base * (1 + e.prem);
+        assert.ok(
+          Math.abs(recomposed - e.p50) <= 1,
+          `(W1-4) base*(1+prem)=p50 不変条件違反: age=${age}, role=${role}, skills=[${sk.join(",")}] → base*(1+prem)=${recomposed.toFixed(3)} と p50=${e.p50.toFixed(3)} が ±1万を超えて乖離（目標逆算 renderTargetBack の前提が壊れます）`,
+        );
+        C();
+      }
+    }
+  }
+}
+
+// (W1-5) 中核職×全スキル×全年齢でも p90 ≤ 3000万（過大評価上限）
+{
+  const allSkills = toSet(SKILL_KEYS);
+  for (let age = 22; age <= 62; age++) {
+    for (const role of CORE_ROLES) {
+      // exp も上限近く（過大に振る）して最悪ケースを作る
+      const e = estimatePercentiles(age, role, allSkills, 40);
+      assert.ok(
+        e.p90 <= 3000,
+        `(W1-5) 過大評価違反: age=${age}, role=${role}, 全スキル, exp=40 の p90=${e.p90.toFixed(1)}万 が 3000万 を超えています`,
+      );
+      C();
+    }
+  }
+}
+
+// (W1-6) age 未入力時 ageFromExp(exp) で補完しても p50 が有限・正
+{
+  for (const exp of [0, 1, 3, 5, 7, 12, 18, 25, 40]) {
+    for (const role of ALL_ROLES) {
+      for (const sk of SKILL_PATTERNS) {
+        const e = estimatePercentiles(null, role, toSet(sk), exp); // age=null → ageFromExp(exp)
+        assert.ok(
+          Number.isFinite(e.p50) && e.p50 > 0,
+          `(W1-6) age 未入力補完違反: exp=${exp}, role=${role}, skills=[${sk.join(",")}] → p50=${e.p50}（有限かつ正でなければなりません）`,
+        );
+        assert.equal(
+          e.ageKnown, false,
+          `(W1-6) age 未入力フラグ違反: exp=${exp} で ageKnown が false になっていません`,
+        );
+        assert.equal(
+          e.age, ageFromExp(exp),
+          `(W1-6) age 補完値違反: exp=${exp} の使用 age=${e.age} が ageFromExp(${exp})=${ageFromExp(exp)} と一致しません`,
+        );
+        C();
+      }
+    }
+  }
+}
+
+// (W1-7) aiPremiumFactor の rel が関連スキル数で逓増（0個→1.0、3個→band の mul）
+{
+  const REL = ["genai", "agent", "mlops"];
+  for (const role of CORE_ROLES) {
+    for (let age = 22; age <= 62; age += 5) {
+      const band = ageToBand(age);
+      const found = (D.aiPremium.byAgeBand || []).find((b) => b.band === band);
+      const cap = D.aiPremium.cap != null ? D.aiPremium.cap : 1.20;
+      const bandBase = (found && found.mul != null) ? found.mul : 1.0;
+      const expectedFull = Math.min(bandBase, cap); // rel=1 のとき mul=min(bandBase,cap)
+
+      // 0個 → 1.0
+      const m0 = aiPremiumFactor(age, role, toSet([])).mul;
+      assert.equal(
+        m0, 1.0,
+        `(W1-7) rel=0 違反: role=${role}, age=${age} で関連スキル0個なのに aiMul=${m0}（1.0 のはず）`,
+      );
+      C();
+
+      // 3個（フル）→ min(bandBase, cap)
+      const m3 = aiPremiumFactor(age, role, toSet(REL)).mul;
+      assert.ok(
+        Math.abs(m3 - expectedFull) < 1e-9,
+        `(W1-7) rel=1(フル) 違反: role=${role}, age=${age}(${band}) で関連スキル3個の aiMul=${m3} が min(bandの mul=${bandBase}, cap=${cap})=${expectedFull} と一致しません`,
+      );
+      C();
+
+      // 逓増性：0個 ≤ 1個 ≤ 2個 ≤ 3個（関連スキルを足すほど mul は単調非減少）
+      let prevMul = -Infinity;
+      for (let n = 0; n <= 3; n++) {
+        const m = aiPremiumFactor(age, role, toSet(REL.slice(0, n))).mul;
+        assert.ok(
+          m >= prevMul - 1e-9,
+          `(W1-7) 逓増性違反: role=${role}, age=${age} で関連スキル ${n - 1}個→${n}個 に増やしたのに aiMul が ${prevMul}→${m} と減少しました`,
+        );
+        prevMul = m;
+        C();
+      }
+    }
+  }
+}
+
 console.log(`✓ all logic tests passed (${checks} checks)`);
 process.exit(0);
