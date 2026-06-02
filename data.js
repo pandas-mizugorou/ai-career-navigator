@@ -54,8 +54,9 @@ window.SALARY_DATA = {
   // 実測値ではないため、画面では tier:"tool" として明示されます。
   model: {
     tier: "tool",
-    // 経験年数→中央値（万円）。年代別レンジ(ageBands)に整合するよう設計
-    expCurve: "0-2:380-430 / 3-5:510-570 / 6-9:622-688 / 10-14:722-810 / 15+:820-980",
+    // 経験年数→中央値（万円）の基準カーブ。連続な区分線形（端点で値が一致し階段にならない）。
+    // [経験年数, 中央値] の点列。baseByExp() がこの間を線形補間する。年代別レンジ(ageBands)に整合するよう設計。
+    expCurve: [[0,380],[2,430],[5,570],[9,688],[14,810],[20,950]],
     roleMul: { ds:0.98, mle:1.05, genai:1.08, consult:1.10, pm:1.06, adjacent:0.82 },
     // スキル加点(%)。生成AIの+15%は「月10–30万の単価差」(relacom/relasic)を年収比に換算した概算
     skillPrem: { genai:.15, agent:.10, mlops:.08, biz:.10, mgmt:.08, eng:.08, research:.07, comm:.05 },
@@ -68,7 +69,7 @@ window.SALARY_DATA = {
     { name:"外資系IT・戦略コンサル", mul:1.28, range:"900–1800万", srcId:"geekly",
       fit:["genai","eng","biz","mgmt"], ex:"外資クラウド系、アクセンチュア、戦略コンサルのAI部門" },
     { name:"AIコンサル / DX支援(日系大手)", mul:1.18, range:"800–1500万", srcId:"geekly",
-      fit:["biz","consult","mgmt","comm"], ex:"電通総研(平均1133万)、NRI、アビーム、SIer系AI部門" },
+      fit:["biz","genai","mgmt","comm"], ex:"電通総研(平均1133万)、NRI、アビーム、SIer系AI部門" },
     { name:"金融(銀行・証券・保険)データ部門", mul:1.15, range:"600–1200万", srcId:"sincereed",
       fit:["biz","research","mlops"], ex:"メガバンク、大手証券、保険会社のデータサイエンス組織" },
     { name:"国内メガベンチャー", mul:1.16, range:"700–1400万", srcId:"michaelpage",
@@ -76,7 +77,7 @@ window.SALARY_DATA = {
     { name:"AIスタートアップ", mul:1.06, range:"600–1200万 +SO", srcId:"relasic",
       fit:["genai","agent","research","comm"], ex:"Sakana AI、ELYZA、Preferred Networks 等" },
     { name:"事業会社のAI/DX内製組織", mul:1.02, range:"550–1000万", srcId:"sincereed",
-      fit:["biz","mlops","comm","pm"], ex:"製造・小売・通信などの社内AI推進・内製チーム" }
+      fit:["biz","mlops","comm","agent"], ex:"製造・小売・通信などの社内AI推進・内製チーム" }
   ],
 
   // 需要が高いスキルタグ（出典つき）
