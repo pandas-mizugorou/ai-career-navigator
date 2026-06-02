@@ -4,7 +4,8 @@
 
    役割：
    - install で中核アセットを cache-first プリキャッシュ（オフライン起動を可能に）
-   - fetch で caches.match || fetch（キャッシュ優先・無ければネットワーク）
+   - fetch で HTML/data.js/ナビゲーションは network-first（最新優先・オフライン時のみキャッシュ）、
+     その他（manifest・アイコン等）は cache-first（オフライン耐性）
    - activate で旧 CACHE を purge（古いデータの残留を防ぐ）
 
    CACHE 名は data.js の last_updated 由来（例 acn-2026-06-02）にする。
@@ -40,7 +41,9 @@ self.addEventListener("install", (event) => {
           cache.add(new Request(url, { cache: "no-store" })).catch(() => {})
         )
       );
-      // 新版を即時有効化（updatefound→waiting を経て controllerchange を発火させる）。
+      // 新版を即時有効化（待機をスキップ→activate→controllerchange→reload の連鎖。
+      // 現状 skipWaiting 未呼出が「ハードリロードしないと反映されない」一因だった）。
+      await self.skipWaiting();
     })()
   );
 });
@@ -61,6 +64,17 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+// 取得成功した同一オリジンの基本リソースを現行キャッシュへ追記（次回オフライン用）。
+function putInCache(req, res) {
+  if (res && res.ok && res.type === "basic") {
+    const copy = res.clone();
+    resolveCacheName().then((name) =>
+      caches.open(name).then((c) => c.put(req, copy)).catch(() => {})
+    );
+  }
+  return res;
+}
+
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   // GET 以外・別オリジンは素通し（このツールは同一オリジンの静的資産のみ扱う）。
@@ -68,22 +82,37 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
+  // HTML / data.js / sw.js / ナビゲーション要求は network-first（古い年収が固定される事故を防ぐ）。
+  // それ以外（manifest・data:アイコン等）は cache-first（オフライン耐性）。
+  const p = url.pathname;
+  const networkFirst =
+    req.mode === "navigate" ||
+    p.endsWith("/") ||
+    p.endsWith("/index.html") ||
+    p.endsWith("/data.js") ||
+    p.endsWith("/sw.js");
+
+  if (networkFirst) {
+    event.respondWith(
+      fetch(req, { cache: "no-store" })
+        .then((res) => putInCache(req, res))
+        .catch(() =>
+          // オフライン時のみキャッシュにフォールバック（無ければ navigate は index.html 殻）。
+          caches.match(req).then((cached) =>
+            cached || (req.mode === "navigate" ? caches.match("./index.html") : Response.error())
+          )
+        )
+    );
+    return;
+  }
+
+  // cache-first：その他の同一オリジン資産。
   event.respondWith(
     caches.match(req).then((cached) => {
       if (cached) return cached;
       return fetch(req)
-        .then((res) => {
-          // 取得できた同一オリジンの基本リソースは現行キャッシュへ追記（次回オフライン用）。
-          if (res && res.ok && res.type === "basic") {
-            const copy = res.clone();
-            resolveCacheName().then((name) =>
-              caches.open(name).then((c) => c.put(req, copy)).catch(() => {})
-            );
-          }
-          return res;
-        })
+        .then((res) => putInCache(req, res))
         .catch(() =>
-          // オフラインかつ未キャッシュ：ナビゲーション要求なら index.html を返してアプリ殻を出す。
           req.mode === "navigate" ? caches.match("./index.html") : Response.error()
         );
     })
