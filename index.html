@@ -75,20 +75,40 @@
   .offlinenote{color:#bcd0ff;font-weight:700}
 
   .grid{display:grid;grid-template-columns:380px 1fr;gap:22px;margin-top:20px}
-  /* モバイル/タブレットでは主役（年収サマリ）を入力より前面・fold 内へ。
-     grid→flex column に切替え、結果カラム(.resultcol)を入力カードより上に order で出す。 */
+  /* モバイル/タブレット(≤900px)では「入力／結果」タブで単一パネル表示に切替える。
+     旧来の order で入力カードを下へ回す方式は、入力カードが画面遥か下（約5725px）に
+     隠れる問題を生んだため撤去。代わりに JS が非選択パネルへ [hidden] を付け、
+     .grid>[hidden]{display:none} で1枚だけ見せる（PC は下の min-width:901px で hidden を無視）。 */
   @media(max-width:900px){
+    .mtabs{display:flex}
     .grid{display:flex;flex-direction:column;gap:18px}
-    .grid > .resultcol{order:1}
-    .grid > .card{order:2}   /* 入力カードは結果の下へ回す */
+    .grid > [hidden]{display:none}   /* 非選択タブのパネルを隠す（単一パネル表示） */
     /* 結果カラム内：年収カード(.hero-result)を最上部へ。信頼度ラダーはその後ろに移す。
-       → スクロール最上部で視線が必ず大きな年収数字に当たる。 */
+       → 結果タブを開いた瞬間に視線が必ず大きな年収数字に当たる。 */
     .resultcol{display:flex;flex-direction:column}
     .resultcol > .hero-result{order:0}
     .resultcol > #ladder{order:1}
     .resultcol > #sr-summary{order:-1}  /* SR 用ライブ領域は視覚順に影響しない */
     .resultcol > .card:not(.hero-result){order:2}
   }
+  /* PC(≥901px)では2カラムを常に両表示。JS が付けた [hidden] を無視して左右に並べる。 */
+  @media(min-width:901px){
+    .mtabs{display:none}
+    .grid > .card[hidden]{display:block !important}
+    .grid > .resultcol[hidden]{display:flex !important}
+  }
+  /* ===== モバイル「入力／結果」タブ（tablist） ===== */
+  .mtabs{position:sticky;top:0;z-index:50;gap:8px;margin:14px 0 4px;background:var(--bg);padding:8px 0}
+  .mtab{flex:1;min-height:44px;font:inherit;font-weight:800;font-size:14px;color:var(--sub);
+    background:var(--panel2);border:1px solid var(--line);border-radius:12px;cursor:pointer}
+  /* 選択状態は色だけに頼らず ::before の●でも示す（非色依存・WCAG 1.4.1）。 */
+  .mtab::before{content:"";font-size:11px;margin-right:6px;opacity:.55}
+  .mtab[aria-selected="true"]{background:rgba(91,140,255,.18);border-color:var(--accent);color:#eaf1ff}
+  .mtab[aria-selected="true"]::before{content:"●";opacity:1}
+  /* 結果更新ありを示す小さな●バッジ（入力タブ滞在中のみ JS が表示）。 */
+  .mtab-badge[hidden]{display:none}
+  .mtab-badge{display:inline-block;width:8px;height:8px;margin-left:7px;border-radius:50%;
+    background:var(--accent2);vertical-align:middle}
   @media(max-width:640px){
     .wrap{padding:16px calc(12px + env(safe-area-inset-right)) calc(70px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left))}
     header.hero{padding:20px 18px;border-radius:16px}
@@ -545,11 +565,15 @@
     .trust h3{color:#000 !important}
     .trust p,.trust li,.composenote,.howto-moved{color:#222 !important}
     .composerow .cl-fill{background:#000 !important}
-    /* 入力スライダー/セレクト・操作系・footer・トースト等は紙面に不要なので非表示。 */
-    input[type=range],select,.chips,.actions,.printbtn,.skip-link,
+    /* 入力スライダー/セレクト・操作系・footer・トースト・モバイルタブ等は紙面に不要なので非表示。 */
+    input[type=range],select,.chips,.actions,.printbtn,.skip-link,.mtabs,
     .pwa-toast,.src-pop,details.jobdisclose,.job-link,footer,#err{display:none !important}
     /* 入力カード（プロフィール）自体も省く：結果が主役の配布物にする。 */
     .grid>.card:not(.hero-result){display:none !important}
+    /* 入力タブ選択中（=結果パネルに [hidden] が付いた状態）に印刷しても結果が必ず出るよう、
+       結果は強制表示・入力カードは強制非表示にする（hero-result は結果側なので残す）。 */
+    .resultcol[hidden]{display:flex !important}
+    .card[hidden]:not(.hero-result){display:none !important}
     /* リンクは黒の下線テキストに */
     a{color:#000 !important;text-decoration:underline}
   }
@@ -572,9 +596,16 @@
     <span class="howto">更新するには Claude Code に <code>AI転職ナビのデータ更新して</code> と依頼</span>
   </div>
 
+  <!-- モバイル(≤900px)専用の「入力／結果」タブ。PC では CSS で display:none。
+       DOM 上は .grid の兄弟（外側）。.card→.resultcol の DOM 順は変えない（SR読み順・Tier2契約維持）。 -->
+  <div class="mtabs" role="tablist" aria-label="表示切り替え" id="mtabs">
+    <button class="mtab" role="tab" id="mtab-input"  aria-controls="panel-input"  aria-selected="false" tabindex="-1">入力</button>
+    <button class="mtab" role="tab" id="mtab-result" aria-controls="panel-result" aria-selected="true"  tabindex="0">結果<span class="mtab-badge" id="mtab-badge" hidden></span></button>
+  </div>
+
   <div class="grid">
     <!-- INPUT -->
-    <div class="card" role="region" aria-labelledby="input-h2">
+    <div class="card" id="panel-input" role="tabpanel" aria-labelledby="mtab-input">
       <h2 id="input-h2">あなたのプロフィール</h2>
 
       <!-- Wave1：年齢（主軸）。公的統計の年齢別実測 p50 を年収推定の土台に使う。
@@ -633,7 +664,7 @@
     </div>
 
     <!-- RESULTS -->
-    <div class="resultcol" role="region" aria-label="診断結果">
+    <div class="resultcol" id="panel-result" role="tabpanel" aria-labelledby="mtab-result">
       <div id="sr-summary" aria-live="polite" class="sr-only"></div>
       <div class="card hero-result">
         <h2>想定年収レンジ <span class="src-badge" id="badge-model"></span></h2>
@@ -821,6 +852,7 @@ function tierBadgeInline(tierKey,date){
 const sel = {age:null, exp:7, role:'genai', pref:'balance', skills:new Set(), current:'', target:'', location:null};
 let touched = false;        // ユーザーが入力を操作したか（初期例ラベルの表示制御）
 let prevMid=null, prevPrem=null;  // 変化フィードバック用の前回値
+let bootingDone=false;      // boot() 完走後に true。render() の結果更新バッジを初期描画で出さないためのガード
 
 /* ===== Wave1：年齢 select の選択肢（年齢が主軸） =====
    1つ目は空値（答えたくない＝未入力）。以降は各年代の中点的な代表年齢。
@@ -1207,6 +1239,11 @@ function boot(){
   updateOnlineState();
   window.addEventListener('online', updateOnlineState);
   window.addEventListener('offline', updateOnlineState);
+
+  // モバイル「入力／結果」タブを配線。bootingDone=true 以降の render() のみ結果更新バッジを出す
+  //（初回 boot 内の render() ではバッジを出さない）。
+  initMobileTabs();
+  bootingDone=true;
 }
 
 // 基準年収カーブは data.js の model.expCurve（[年,中央値] の点列）を単一ソースにする。
@@ -1926,6 +1963,99 @@ function render(){
   const qs=$('jobquery-sample'); if(qs) qs.textContent=jobQuery(Math.round(lo/10)*10);
 
   writeHash();   // 現在の条件を共有可能URL（ハッシュ）に反映（replaceState・送信なし）
+  if(bootingDone) markResultUpdated();  // 入力変更で結果が更新された合図（入力タブ滞在中のみバッジ表示）
+}
+
+/* ===== モバイル(≤900px)「入力／結果」タブ =====
+   PC(>900px)は CSS（.mtabs{display:none}＋hidden無視）で常に2カラム両表示。
+   モバイルは非選択パネルへ [hidden] を付けて1枚だけ見せる。tablist の WAI-ARIA APG に準拠：
+   roving tabindex（選択0/他-1）＋矢印/Home/End キーで移動、クリックはフォーカス移動なし。 */
+const mtab = {};   // ※ skillMeta/roleLabel とは別名（Tier2 抽出正規表現に当たらない）。タブ要素のキャッシュ。
+function initMobileTabs(){
+  mtab.list   = document.getElementById('mtabs');
+  mtab.input  = document.getElementById('mtab-input');
+  mtab.result = document.getElementById('mtab-result');
+  mtab.badge  = document.getElementById('mtab-badge');
+  mtab.pInput = document.getElementById('panel-input');
+  mtab.pResult= document.getElementById('panel-result');
+  if(!mtab.list || !mtab.input || !mtab.result) return;
+  const tabs=[mtab.input, mtab.result];
+
+  // クリック：選択のみ（フォーカス移動はしない＝指タップで意図せぬスクロール飛びを防ぐ）。
+  tabs.forEach(t=> t.addEventListener('click', ()=> select(t.id, false)));
+  // キーボード：左右/上下で移動＋選択（フォーカスも移す）、Home/End で端へ。
+  tabs.forEach(t=> t.addEventListener('keydown', e=>{
+    let to=null;
+    if(e.key==='ArrowLeft'||e.key==='ArrowUp')        to = (t===mtab.result) ? mtab.input  : mtab.result;
+    else if(e.key==='ArrowRight'||e.key==='ArrowDown') to = (t===mtab.input)  ? mtab.result : mtab.input;
+    else if(e.key==='Home')                            to = mtab.input;
+    else if(e.key==='End')                             to = mtab.result;
+    else return;
+    e.preventDefault();
+    select(to.id, true);
+  }));
+
+  // matchMedia：PC幅では両パネルを必ず可視（hidden を外す）。モバイル復帰で選択中タブを再適用。
+  const mq=window.matchMedia('(max-width:900px)');
+  const applyMQ=()=>{
+    if(mq.matches){ select(currentTabId(), false); }   // モバイル：単一パネル表示を再適用
+    else { mtab.pInput.hidden=false; mtab.pResult.hidden=false; }  // PC：両表示
+  };
+  if(mq.addEventListener) mq.addEventListener('change', applyMQ);
+  else if(mq.addListener) mq.addListener(applyMQ);   // 古い Safari 互換
+
+  // 初期選択：sessionStorage 復元 > 既定 'mtab-result'。
+  let initId='mtab-result';
+  try{ const s=sessionStorage.getItem('acn_mtab'); if(s==='mtab-input'||s==='mtab-result') initId=s; }catch(e){}
+  // 初期状態を反映（モバイルなら単一パネル、PC なら applyMQ が両表示に上書き）。
+  select(initId, false, true);
+  applyMQ();
+}
+// 現在選択中のタブ id を返す（aria-selected から判定）。
+function currentTabId(){ return (mtab.result && mtab.result.getAttribute('aria-selected')==='true') ? 'mtab-result' : 'mtab-input'; }
+// タブ選択の中核：aria-selected・roving tabindex・各パネルの hidden を更新する。
+// focus=true でフォーカスも移す（矢印キー時）。silent=true は初期化時で sessionStorage/scroll を抑制。
+function select(tabId, focus, silent){
+  if(!mtab.input || !mtab.result) return;
+  const isResult = (tabId==='mtab-result');
+  // 切替時に開いている出典ポップは畳む（古い DOM 参照を残さない）。
+  if(!silent && typeof pop!=='undefined' && pop) closePop(false);
+
+  mtab.result.setAttribute('aria-selected', isResult ? 'true' : 'false');
+  mtab.input .setAttribute('aria-selected', isResult ? 'false': 'true');
+  mtab.result.tabIndex = isResult ? 0 : -1;
+  mtab.input .tabIndex = isResult ? -1 : 0;
+
+  // 単一パネル表示：結果選択→入力を隠す／入力選択→結果を隠す。
+  // （PC では CSS の min-width:901px が hidden を無視して両表示にする。）
+  mtab.pInput .hidden = isResult;
+  mtab.pResult.hidden = !isResult;
+
+  if(isResult) clearResultBadge();   // 結果を見たら「更新あり」バッジを消す
+
+  if(focus){ const el = isResult ? mtab.result : mtab.input; try{ el.focus(); }catch(e){} }
+
+  if(!silent){
+    try{ sessionStorage.setItem('acn_mtab', tabId); }catch(e){}
+    // 切替後はタブ列付近へスクロール（長い結果から入力へ移ったとき先頭を見せる）。
+    const reduce = window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+    const y = (mtab.list ? mtab.list.getBoundingClientRect().top + window.scrollY - 8 : 0);
+    try{ window.scrollTo({top:Math.max(0,y), behavior: reduce ? 'auto' : 'smooth'}); }catch(e){ window.scrollTo(0, Math.max(0,y)); }
+  }
+}
+// 結果が更新された合図：入力タブ滞在中のみ結果タブに●バッジ＋aria通知を出す
+//（結果タブを見ている最中は不要なので出さない）。
+function markResultUpdated(){
+  if(!mtab.badge || !mtab.result) return;
+  if(currentTabId()!=='mtab-input') return;   // 入力タブにいるときだけ
+  mtab.badge.hidden=false;
+  mtab.result.setAttribute('aria-label','結果（更新あり）');
+}
+// バッジを消し、結果タブの aria-label を既定へ戻す。
+function clearResultBadge(){
+  if(!mtab.badge || !mtab.result) return;
+  mtab.badge.hidden=true;
+  mtab.result.removeAttribute('aria-label');
 }
 
 /* ===== 出典バッジのポップオーバー =====
