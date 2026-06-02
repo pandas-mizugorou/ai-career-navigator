@@ -15,6 +15,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write   # claude-code-action が OIDC トークン取得に必要（欠けると認証前に失敗）
   issues: write
 
 concurrency:
