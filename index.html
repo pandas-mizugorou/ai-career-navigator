@@ -198,6 +198,10 @@
   .bar{position:relative;height:46px;background:var(--panel2);border-radius:12px;margin:18px 0 6px;overflow:hidden;border:1px solid var(--line)}
   .bar .scale{position:absolute;inset:0;display:flex;justify-content:space-between;padding:0 10px;align-items:flex-end;font-size:10px;color:var(--sub)}
   .bar .fill{position:absolute;top:0;bottom:0;background:var(--grad);opacity:.8;border-radius:10px;transition:.4s}
+  /* Wave1：参考上限ゾーン(p75→p90)。濃いボリュームゾーンと差をつけ「参考」と分かる薄いハッチ。
+     色だけに頼らずストライプ（形）で区別する。transition は fill と揃える。 */
+  .bar .fillref{position:absolute;top:0;bottom:0;z-index:1;border-radius:0 10px 10px 0;opacity:.55;transition:.4s;
+    background:repeating-linear-gradient(135deg,rgba(91,140,255,.55) 0 6px,rgba(91,140,255,.12) 6px 12px)}
   /* 市場平均ティック：不透明度を上げて見やすく（旧 .22 は埋もれていた）。市場平均は重要な比較基準。 */
   .bar .btick{position:absolute;top:0;bottom:0;width:2px;background:rgba(205,215,245,.62);z-index:2}
   .bar .midmark{position:absolute;top:0;bottom:0;width:2px;background:var(--ink);transform:translateX(-50%);z-index:4;box-shadow:0 0 6px rgba(0,0,0,.55);transition:left .4s}
@@ -207,6 +211,8 @@
   .markrow .legend{display:flex;align-items:center;gap:4px 10px;flex-wrap:wrap}
   .markrow .lg{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
   .markrow .lg-band{width:18px;height:9px;border-radius:3px;background:var(--grad);opacity:.85;flex:0 0 auto}
+  /* Wave1：参考上限ゾーンの凡例スウォッチ（ハッチでバー本体と一致させる） */
+  .markrow .lg-band.lg-ref{background:repeating-linear-gradient(135deg,rgba(91,140,255,.65) 0 4px,rgba(91,140,255,.15) 4px 8px);opacity:.8}
   .markrow .lg-tri{color:var(--ink);font-size:11px;line-height:1;font-weight:900}
   .markrow .lg-line{width:2px;height:12px;background:#cdd7f5;flex:0 0 auto;border-radius:1px}
   /* バー直下の可視ラベル（▼直下に「あなた」・市場平均線下に職種名/「市場平均」）。
@@ -226,7 +232,7 @@
   @media(prefers-reduced-motion:reduce){
     .bigfig.flash{animation:none}
     /* 動きの抑制を望むユーザーにはバー・マーカー・チップ・スライダーつまみの遷移も止める（WCAG 2.3.3） */
-    .bar .fill,.bar .midmark,.chip,
+    .bar .fill,.bar .fillref,.bar .midmark,.chip,
     input[type=range]::-webkit-slider-thumb{transition:none}
     input[type=range]:active::-webkit-slider-thumb{transform:none}
   }
@@ -352,15 +358,25 @@
   .disc{background:var(--panel);border:1px dashed var(--line);border-radius:12px;padding:12px 16px;font-size:11.5px;color:#8b96bd;margin-top:16px}
   #err{display:none;background:rgba(240,104,104,.12);border:1px solid var(--bad);color:#ffadad;padding:14px;border-radius:12px;margin-top:16px;font-size:13px}
 
-  /* ===== Batch5：現年収比の差分行 ===== */
+  /* ===== Batch5→Wave2：現年収の2系統表示（市場ポジション／実測昇給見込み） ===== */
   /* プラスは accent2（緑）、マイナスは中立（赤は使わない＝マイナスは「悪」ではないため）。 */
   .currentdiff{font-size:12.5px;color:#cdd7f5;background:rgba(91,140,255,.10);
-    border:1px solid var(--line);border-radius:9px;padding:8px 12px;margin-top:12px;line-height:1.55}
+    border:1px solid var(--line);border-radius:9px;padding:10px 12px;margin-top:12px;line-height:1.55}
   .currentdiff .cd-amt{font-weight:800}
   .currentdiff.up .cd-amt{color:var(--accent2)}
   .currentdiff.down .cd-amt{color:#bcd0ff}   /* マイナスは中立色（青寄り） */
   .currentdiff .cd-note{display:block;color:#9aa6c8;font-size:11.5px;margin-top:3px}
   .currentdiff b{color:#dbe6ff}
+  /* Wave2：2系統を縦に積む。各系統は見出し（バッジ付き）＋本文。 */
+  .currentdiff .cd-sys{padding:7px 0}
+  .currentdiff .cd-sys + .cd-sys{border-top:1px solid rgba(39,49,79,.7);margin-top:2px}
+  .currentdiff .cd-sys:first-child{padding-top:2px}
+  .currentdiff .cd-head{display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-weight:800;color:#dbe6ff;font-size:12px;margin-bottom:3px}
+  .currentdiff .cd-pos{font-weight:800}
+  .currentdiff .cd-pos.hi{color:var(--accent2)}
+  .currentdiff .cd-pos.lo{color:#bcd0ff}
+  .currentdiff .cd-pos.mid{color:#bcd0ff}
+  .currentdiff .cd-foot{display:block;color:#9aa6c8;font-size:11px;margin-top:6px;line-height:1.5}
 
   /* ===== Batch5：目標年収の逆算ボックス ===== */
   .targetbox{font-size:12.5px;color:#cdd7f5;border-radius:10px;padding:10px 13px;margin-top:12px;line-height:1.6}
@@ -418,6 +434,39 @@
   .curvelegend .cl-swatch{width:22px;height:0;border-top:3px solid var(--accent2);flex:0 0 auto}
   .curvelegend .cl-swatch.max{border-top:3px dashed var(--accent)}
   .curvelegend b{color:#dbe6ff}
+
+  /* ===== §8：計算内訳の完全開示（details 折りたたみ） =====
+     p50 がどう積み上がったかを「年齢アンカー ×補正 ×… = 中央値」の表で開示。
+     各行に tier バッジを付け、推定（tool/agency）と実測（official）を区別する。 */
+  details.calcbreak{margin-top:12px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:2px 12px}
+  details.calcbreak summary{cursor:pointer;font-size:12px;font-weight:800;color:#dbe6ff;padding:9px 0;list-style:none;display:flex;align-items:center;gap:7px}
+  details.calcbreak summary::-webkit-details-marker{display:none}
+  details.calcbreak summary::before{content:"▸";color:var(--accent);font-weight:900;transition:transform .15s}
+  details.calcbreak[open] summary::before{transform:rotate(90deg)}
+  @media(prefers-reduced-motion:reduce){ details.calcbreak summary::before{transition:none} }
+  .cb-body{padding:4px 0 12px}
+  .cb-table{width:100%;border-collapse:collapse;font-size:12px}
+  .cb-table td{border:0;border-bottom:1px solid rgba(39,49,79,.6);padding:7px 4px;vertical-align:top;text-align:left}
+  .cb-table tr:last-child td{border-bottom:0}
+  /* 行：演算子＋ラベル ／ 係数 ／ tier バッジ。係数列は等幅で読みやすく右寄せ。 */
+  .cb-table .cb-op{color:var(--sub);font-weight:800;width:18px;white-space:nowrap}
+  .cb-table .cb-label{color:#cdd7f5}
+  .cb-table .cb-label b{color:#dbe6ff;font-weight:700}
+  .cb-table .cb-label .cb-sub{display:block;color:#8b96bd;font-size:10.5px;margin-top:1px}
+  .cb-table .cb-fac{color:#dbe6ff;font-weight:800;white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums}
+  .cb-table .cb-badge{text-align:right;white-space:nowrap;width:1%}
+  .cb-table .cb-na{color:#8b96bd;font-weight:700}
+  /* 合計行（= 中央値）を強調 */
+  .cb-table tr.cb-total td{border-top:1.5px solid var(--line);padding-top:9px}
+  .cb-table tr.cb-total .cb-label b{color:#fff;font-size:13px}
+  .cb-table tr.cb-total .cb-fac{color:var(--accent2);font-size:13.5px}
+  .cb-cav{font-size:11px;color:#9aa6c8;margin-top:9px;line-height:1.55}
+  .cb-cav b{color:#cdd7f5}
+  @media(max-width:640px){
+    /* 縦カード化はせず、内訳は密な表のまま（左ラベル・右係数）。係数が折り返さないよう最小幅確保。 */
+    .cb-table .cb-fac{min-width:52px}
+    .cb-table .cb-badge{display:block;text-align:left;padding-top:0}
+  }
 
   /* PWA 更新トースト（新キャッシュ準備完了 → タップで再読込）。中立色・赤は使わない。 */
   .pwa-toast{position:fixed;left:50%;transform:translateX(-50%);z-index:300;
@@ -480,6 +529,13 @@
     .pill{border:1px solid #000;color:#000 !important;background:#fff !important}
     .src-badge{border:1px solid #888;color:#000 !important;background:#fff !important}
     .tmark{color:#000 !important}
+    /* §8 計算内訳も強制展開し、紙面に「なぜこの額か」を必ず残す（検証可能性の担保）。 */
+    details.calcbreak{display:block !important;background:#fff !important;border:1px solid #000 !important}
+    details.calcbreak>*{display:revert !important}
+    details.calcbreak summary{list-style:none;color:#000 !important}
+    details.calcbreak summary::before,details.calcbreak summary::-webkit-details-marker{display:none}
+    .cb-table td,.cb-table .cb-label,.cb-table .cb-label b,.cb-table .cb-fac{color:#000 !important;border-color:#888 !important}
+    .cb-table .cb-op,.cb-table .cb-na,.cb-table .cb-label .cb-sub,.cb-cav{color:#222 !important}
     /* trust パネルは details[open] 相当に強制展開し、本文を必ず印字（details.trust[open] と同等の display:block）。 */
     details.trust{display:block !important;background:#fff !important;border:1px solid #000 !important}
     details.trust>*{display:revert !important}
@@ -520,8 +576,21 @@
     <!-- INPUT -->
     <div class="card" role="region" aria-labelledby="input-h2">
       <h2 id="input-h2">あなたのプロフィール</h2>
+
+      <!-- Wave1：年齢（主軸）。公的統計の年齢別実測 p50 を年収推定の土台に使う。
+           「答えたくない」を選ぶと経験年数から保守推定（過大評価を避ける）。 -->
+      <label class="fld" for="age">年齢（年収推定の主軸）</label>
+      <select id="age" aria-label="年齢（年収推定の主軸・任意）"></select>
+      <div class="hint">※年齢別の公的統計（実測の中央値）を土台にします。未入力なら経験年数から保守推定します（送信なし）。</div>
+
+      <!-- §8：勤務地（年収の大変動要因）。全国平均が土台なので 東京>1.0／地方<1.0／リモート≒1.0 を掛ける。 -->
+      <label class="fld" for="location">勤務地（年収の大変動要因・任意）</label>
+      <select id="location" aria-label="勤務地（年収補正・任意）"></select>
+      <div class="hint">※勤務地で賃金水準が変わります（全国平均が土台）。東京/首都圏は高め、地方は低め、フルリモートは中立で補正します。未指定なら補正しません。</div>
+
       <label class="fld rangelabel" for="exp">実務経験年数（AI/データ分析）<span class="rangeval" id="expv" aria-hidden="true">7年</span></label>
       <input type="range" id="exp" min="0" max="20" value="7" aria-label="実務経験年数（AI/データ分析）" aria-valuetext="7年">
+      <div class="hint">※AI/データ分析の<b>実務</b>に携わった年数（学習・独学・研修のみの期間は含めません）。誤差を減らすため実務年数で。</div>
 
       <label class="fld" for="role">現在の職種・立ち位置</label>
       <select id="role">
@@ -533,7 +602,7 @@
         <option value="adjacent">隣接職（SE・企画など）からの挑戦</option>
       </select>
 
-      <div class="fld" id="skills-label">スキル・強み（当てはまるものをタップ・複数選択可）</div>
+      <div class="fld" id="skills-label">スキル・強み（<b>実務で使えるレベル</b>のものをタップ・複数選択可）</div>
       <div class="chips" id="skills" role="group" aria-labelledby="skills-label"></div>
       <!-- 選択中の個数・加点合計の動的サマリ（premCap 到達で頭打ちを明示） -->
       <div class="skillsum" id="skillsum" role="status" aria-live="polite"></div>
@@ -592,14 +661,23 @@
         <div class="markrow">
           <span class="legend" aria-hidden="true">
             単位：万円。
-            <span class="lg"><span class="lg-band"></span>想定レンジ</span>
-            <span class="lg"><span class="lg-tri">▼</span>あなたの中央値</span>
+            <span class="lg"><span class="lg-band"></span>多くの人(p25〜p75)</span>
+            <span class="lg"><span class="lg-band lg-ref"></span>参考上限(〜p90)</span>
+            <span class="lg"><span class="lg-tri">▼</span>中央(p50)</span>
             <span class="lg"><span class="lg-line"></span>職種別の市場平均</span>
           </span>
           <span id="posnote"></span>
         </div>
         <div class="barlabels" id="barlabels" aria-hidden="true"></div>
+        <!-- Wave1：不確実性の開示（分位が推定／年齢未入力時の保守推定）。該当時のみ各1行を表示。 -->
+        <div id="uncertainty" style="margin-top:8px"></div>
         <div class="agerange" id="agerange"></div>
+        <!-- §8：計算内訳の完全開示。p50 が「年齢アンカー × 各補正」でどう積み上がったかを一段ずつ開示し、
+             ユーザーが「なぜこの額か」を検証できるようにする（誠実さの極致）。各行に該当 tier バッジ。 -->
+        <details class="calcbreak" id="calcbreak">
+          <summary>この金額の内訳（計算を一段ずつ開示）</summary>
+          <div class="cb-body" id="calcbreak-body"></div>
+        </details>
         <div class="hint" id="gapline" style="margin-top:10px"></div>
         <div class="hint" id="benchline" style="margin-top:6px"></div>
         <div class="actions">
@@ -649,7 +727,7 @@
       <!-- Batch5-5：キャリア年収カーブ外挿（SVG・依存ゼロ） -->
       <div class="card">
         <h2>この先の年収カーブ（試算） <span class="src-badge" id="badge-curve"></span></h2>
-        <div class="hint" style="margin-bottom:8px">いまの経験 <b id="curve-from" style="color:#dbe6ff">—</b> 年を起点に、<b style="color:#dbe6ff">今後7年</b>の想定中央値を外挿した<b>本ツール推定</b>です（実測の昇給予測ではありません）。</div>
+        <div class="hint" style="margin-bottom:8px">いまの <b id="curve-from" style="color:#dbe6ff">—</b> を起点に、<b style="color:#dbe6ff">今後7年</b>の <b style="color:#dbe6ff">中央(p50)</b> と <b style="color:#dbe6ff">上位(p75)</b> を、年齢別の実測中央値を主軸に外挿した<b>本ツール推定</b>です（実測の昇給予測ではありません）。40代後半〜50代前半は実測上いったん下降します。</div>
         <div id="curve"></div>
         <div class="curvelegend" id="curvelegend"></div>
       </div>
@@ -738,9 +816,49 @@ function tierBadgeInline(tierKey,date){
   return `<button type="button" class="src-badge" data-tier="${esc(tierKey)}" aria-haspopup="dialog" aria-expanded="false" aria-label="${esc(t.label)}。説明を開く" title="${esc(t.label)}：${esc(t.desc)}／タップで詳細">${tierMark(t)}${esc(t.label)}${date?`<span class="tdate">${esc(date)}</span>`:''}</button>`;
 }
 
-const sel = {exp:7, role:'genai', pref:'balance', skills:new Set(), current:'', target:''};
+// age は数値(22..62) または null（未入力＝「答えたくない」）。null 時は経験年数から保守推定。
+// location はキー(capital/major/regional/remote) または null（未指定＝補正なし＝×1.0）。
+const sel = {age:null, exp:7, role:'genai', pref:'balance', skills:new Set(), current:'', target:'', location:null};
 let touched = false;        // ユーザーが入力を操作したか（初期例ラベルの表示制御）
 let prevMid=null, prevPrem=null;  // 変化フィードバック用の前回値
+
+/* ===== Wave1：年齢 select の選択肢（年齢が主軸） =====
+   1つ目は空値（答えたくない＝未入力）。以降は各年代の中点的な代表年齢。
+   ラベルは専門知識不要の分かりやすい表記（20代前半 等）にする。 */
+const AGE_OPTS = [
+  {v:'',   label:'答えたくない / 未入力'},
+  {v:'22', label:'20代前半（〜24歳）'},
+  {v:'27', label:'20代後半（25〜29歳）'},
+  {v:'32', label:'30代前半（30〜34歳）'},
+  {v:'37', label:'30代後半（35〜39歳）'},
+  {v:'42', label:'40代前半（40〜44歳）'},
+  {v:'47', label:'40代後半（45〜49歳）'},
+  {v:'52', label:'50代前半（50〜54歳）'},
+  {v:'57', label:'50代後半（55〜59歳）'},
+  {v:'62', label:'60代（60歳〜）'}
+];
+// age select の許容値集合（URLハッシュ/復元のバリデーションに使う）。
+const AGE_VALUES = AGE_OPTS.map(o=>o.v).filter(Boolean);
+
+/* ===== §8：勤務地（年収の大変動要因）の選択肢 =====
+   1つ目は空値（未指定＝補正なし＝×1.0）。キーは data.js の model.locationMul と一致させる。
+   年齢アンカー(ソフトウェア作成者)は全国平均なので、capital(東京)>1.0 / regional(地方)<1.0 / remote≈1.0。 */
+const LOC_OPTS = [
+  {v:'',         label:'未指定（補正なし）'},
+  {v:'capital',  label:'東京・首都圏'},
+  {v:'major',    label:'主要都市（大阪・名古屋・福岡 等）'},
+  {v:'regional', label:'地方'},
+  {v:'remote',   label:'フルリモート'}
+];
+// location select の許容値集合（URLハッシュ/復元のバリデーション）。data.js の locationMul キーと突き合わせて採用。
+const LOC_VALUES = LOC_OPTS.map(o=>o.v).filter(Boolean);
+// 勤務地補正係数。未指定(null)や未知キー、locationMul 未定義なら 1.0（後方互換・盛らない）。
+function locationFactor(){
+  const m=(D.model&&D.model.locationMul)||null;
+  if(!m||!sel.location) return 1.0;
+  const v=m[sel.location];
+  return (typeof v==='number'&&isFinite(v))?v:1.0;
+}
 
 /* ===== Batch5：現年収レンジ select の選択肢（万円・中央値で差分計算） =====
    「答えたくない」は空値。任意入力なので未選択時は差分行を一切出さない（盛らない）。 */
@@ -826,6 +944,8 @@ function toggleChip(c){ setChip(c, c.getAttribute('aria-checked')!=='true'); tou
 const SKILL_KEYS = ()=>Object.keys(D.model.skillPrem);
 function writeHash(){
   let h=`exp=${sel.exp}&role=${sel.role}&pref=${sel.pref}&sk=${[...sel.skills].join(',')}`;
+  if(Number.isFinite(sel.age)) h+=`&age=${sel.age}`;  // Wave1：年齢（任意・未入力なら付けない＝後方互換）
+  if(sel.location) h+=`&loc=${sel.location}`;   // §8：勤務地（任意・未指定なら付けない＝後方互換）
   if(sel.current) h+=`&cur=${sel.current}`;     // 現年収（任意）
   if(sel.target)  h+=`&tgt=${sel.target}`;      // 目標年収（任意）
   history.replaceState(null,'','#'+h);   // replaceState なので履歴を汚さない
@@ -833,6 +953,10 @@ function writeHash(){
 function applyHash(){
   const raw=location.hash.replace(/^#/,''); if(!raw) return false;
   const p=new URLSearchParams(raw);
+  // Wave1：年齢（任意）。許容値リスト(22..62)に一致するものだけ採用。無ければ何もしない＝後方互換。
+  if(p.has('age')){ const v=p.get('age'); sel.age = AGE_VALUES.includes(v) ? parseInt(v,10) : sel.age; }
+  // §8：勤務地（任意）。許容キー(capital/major/regional/remote)に一致するものだけ採用。無ければ補完なし＝1.0（後方互換）。
+  if(p.has('loc')){ const v=p.get('loc'); sel.location = LOC_VALUES.includes(v) ? v : null; }
   if(p.has('exp')) sel.exp=Math.max(0,Math.min(20, parseInt(p.get('exp'),10)||0));
   if(p.has('role') && D.model.roleMul[p.get('role')]) sel.role=p.get('role');
   if(p.has('pref') && prefLabel[p.get('pref')]) sel.pref=p.get('pref');
@@ -843,6 +967,10 @@ function applyHash(){
   return true;
 }
 function syncUIFromSel(){
+  // Wave1：年齢（null は空文字＝「答えたくない」に対応）。
+  if($('age')) $('age').value = Number.isFinite(sel.age) ? String(sel.age) : '';
+  // §8：勤務地（null は空文字＝「未指定」に対応）。
+  if($('location')) $('location').value = sel.location || '';
   $('exp').value=sel.exp; $('expv').textContent=sel.exp+(sel.exp>=20?'年+':'年');
   $('exp').setAttribute('aria-valuetext', sel.exp>=20?'20年以上':sel.exp+'年');
   $('role').value=sel.role; $('pref').value=sel.pref;
@@ -868,9 +996,12 @@ function copyResult(){
     const d=Math.round(mid-cm), pct=Math.round((mid-cm)/cm*100);
     diffLine=`\n現年収比：${d>=0?'+':''}${fmt(d)}万（${pct>=0?'+':''}${pct}%・本ツール想定式との比較）`;
   }
+  const ageTxt = Number.isFinite(sel.age) ? `${sel.age}歳前後` : '年齢未入力';
+  // 勤務地を指定していれば条件行に含める（未指定なら何も足さない＝盛らない）。
+  const locTxt = sel.location ? ` / 勤務地：${(LOC_OPTS.find(o=>o.v===sel.location)||{}).label||sel.location}` : '';
   const text=`【AI転職ナビ 診断結果｜本ツール推定】
 想定年収 中央 ${fmt(mid)}万円（レンジ ${fmt(lo)}〜${fmt(hi)}万）
-条件：経験${sel.exp}年 / ${roleLabel[sel.role]} / 志向：${prefLabel[sel.pref]}
+条件：${ageTxt} / 経験${sel.exp}年 / ${roleLabel[sel.role]} / 志向：${prefLabel[sel.pref]}${locTxt}
 スキル：${skills}${diffLine}
 ※実在の市場平均を本ツールの推定式で加工した目安。実測値ではありません。
 ${location.href}`;
@@ -879,6 +1010,8 @@ ${location.href}`;
     .catch(()=>flashMsg('コピーできませんでした'));
 }
 function resetAll(){
+  sel.age=null;                    // Wave1：年齢は「答えたくない」(未入力)へ
+  sel.location=null;               // §8：勤務地も「未指定」へ
   sel.exp=7; sel.role='genai'; sel.pref='balance'; sel.skills=new Set();
   sel.current=''; sel.target='';   // Batch5：現年収・目標もクリア
   document.querySelectorAll('#skills .chip').forEach(c=>setChip(c,false));
@@ -984,6 +1117,10 @@ function boot(){
   });
   ['genai','biz','comm','agent'].forEach(k=>{const c=document.querySelector(`#skills .chip[data-k="${k}"]`);if(c) setChip(c,true);});
 
+  // Wave1：年齢 select を生成（主軸の入力）。
+  if($('age')) $('age').innerHTML=AGE_OPTS.map(o=>`<option value="${esc(o.v)}">${esc(o.label)}</option>`).join('');
+  // §8：勤務地 select を生成（locationMul が存在する場合のみ選択肢を出す＝後方互換）。
+  if($('location')) $('location').innerHTML=LOC_OPTS.map(o=>`<option value="${esc(o.v)}">${esc(o.label)}</option>`).join('');
   // Batch5：現年収・目標年収の select を生成。
   $('current').innerHTML=CURRENT_OPTS.map(o=>`<option value="${esc(o.v)}">${esc(o.label)}</option>`).join('');
   $('target').innerHTML=TARGET_OPTS.map(o=>`<option value="${esc(o.v)}">${esc(o.label)}</option>`).join('');
@@ -998,6 +1135,10 @@ function boot(){
   // 経験年数スライダー：ラベル(expv/aria-valuetext)は即時更新で追従性を保ちつつ、
   // 重い render() は rAF でコアレス（ドラッグ中の毎フレーム全再構築を抑える）。
   $('exp').addEventListener('input',e=>{sel.exp=+e.target.value;$('expv').textContent=sel.exp+(sel.exp>=20?'年+':'年');e.target.setAttribute('aria-valuetext',sel.exp>=20?'20年以上':sel.exp+'年');touched=true;scheduleRender();});
+  // Wave1：年齢（主軸）。空値は null（未入力＝経験から保守推定）、それ以外は数値で保持。
+  if($('age')) $('age').addEventListener('change',e=>{ const v=e.target.value; sel.age = v==='' ? null : (parseInt(v,10)||null); touched=true; render(); });
+  // §8：勤務地。空値は null（未指定＝×1.0）、それ以外は許容キーのみ保持（不正値は null）。
+  if($('location')) $('location').addEventListener('change',e=>{ const v=e.target.value; sel.location = LOC_VALUES.includes(v) ? v : null; touched=true; render(); });
   $('role').addEventListener('change',e=>{sel.role=e.target.value;touched=true;render();});
   $('pref').addEventListener('change',e=>{sel.pref=e.target.value;touched=true;render();});
   // Batch5：現年収・目標年収（任意）。localStorage 保存も try/catch 防御。
@@ -1070,6 +1211,10 @@ function boot(){
 
 // 基準年収カーブは data.js の model.expCurve（[年,中央値] の点列）を単一ソースにする。
 // 点間を線形補間するので端点で連続＝スライダーで階段状に跳ねない。範囲外はクランプ。
+// 【Wave1 以降の位置づけ】年齢アンカー(ageAnchor)導入後、年収推定の主軸は estimatePercentiles()＝
+//   anchorAt(age) に移行した。baseByExp / expCurve は年齢が効く現行ロジックでは実質フォールバック/補助で、
+//   現在は主に目標逆算 renderTargetBack の経験+N年シミュレーションでのみ使用される（age が無い場面の補助）。
+//   ※ロジックは変更しない。test-logic の expCurve 連続性テスト(b)は引き続き維持する。
 function baseByExp(y){
   const pts = D.model.expCurve;
   const lo = pts[0], hi = pts[pts.length-1];
@@ -1081,17 +1226,148 @@ function baseByExp(y){
   }
   return hi[1];
 }
-function personalRange(){
-  const base=baseByExp(sel.exp)*D.model.roleMul[sel.role];
+/* ============================================================
+   Wave1：年齢を主軸にした percentile 年収推定（正確性改修 2026-06）
+   data.js の ageAnchor（厚労省 賃金構造・ソフトウェア作成者の年齢別実測 p50）を
+   主軸に据え、経験年数は「年齢から推定される標準経験」からのズレを副次補正に格下げ。
+   分位(p25/p75/p90)は公的統計に無いため spread.ratio で推定補完し UI で明示する。
+   既存式（roleMul / skillPrem / premCap / base*(1+prem)=p50）は温存し、目標逆算・
+   企業行・キャリアカーブ・現年収差分・共有が無改修で動くよう personalRange() は互換ラッパに保つ。
+   ============================================================ */
+const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+
+// 年齢未入力時の保守推定（過大評価を避けるため 22〜60 にクランプ）。経験≠年齢のため控えめに。
+function ageFromExp(exp){ return clamp(22+(Number(exp)||0), 22, 60); }
+
+// points([{age,key,...}]) を age で線形補間して key の値を返す（範囲外は端点にクランプ）。
+function interpAnchor(points, age, key){
+  const pts=(points||[]).filter(p=>p && isFinite(p.age));
+  if(!pts.length) return null;
+  if(age<=pts[0].age) return pts[0][key];
+  if(age>=pts[pts.length-1].age) return pts[pts.length-1][key];
+  for(let i=1;i<pts.length;i++){
+    const a=pts[i-1], b=pts[i];
+    if(age<=b.age){
+      const t=(age-a.age)/(b.age-a.age);
+      const va=a[key], vb=b[key];
+      if(va==null || vb==null) return null;   // 補間端のどちらかが欠損なら null
+      return va+(vb-va)*t;
+    }
+  }
+  return pts[pts.length-1][key];
+}
+
+// 年齢 → percentile アンカー。p50 は実測補間。p25/p75/p90 は全点で実測(非null)ならそれを補間、
+// 1点でも欠ければ spread.ratio で p50 から推定補完し estimatedSpread=true を立てる（UIで開示）。
+function anchorAt(age){
+  const P=(D.ageAnchor&&D.ageAnchor.points)||[];
+  const p50=interpAnchor(P, age, 'p50');
+  const allReal=k=>P.length>0 && P.every(p=>p[k]!=null);
+  const ratio=(D.spread&&D.spread.ratio)||{p25:0.85,p75:1.20,p90:1.45};
+  let p25,p75,p90,estimatedSpread=false;
+  if(allReal('p25')&&allReal('p75')&&allReal('p90')){
+    p25=interpAnchor(P, age, 'p25');
+    p75=interpAnchor(P, age, 'p75');
+    p90=interpAnchor(P, age, 'p90');
+    // 補間結果に欠損が出た場合（理屈上は起きないが安全網）は推定へフォールバック
+    if(p25==null||p75==null||p90==null){ estimatedSpread=true; p25=p50*ratio.p25; p75=p50*ratio.p75; p90=p50*ratio.p90; }
+  } else {
+    estimatedSpread=true;
+    p25=p50*ratio.p25; p75=p50*ratio.p75; p90=p50*ratio.p90;
+  }
+  return {p25,p50,p75,p90,estimatedSpread};
+}
+
+// 年齢 → ageBand 文字列（aiPremium.byAgeBand / spread の帯対応に使う）。
+function ageToBand(age){
+  return age<30?"20代":age<40?"30代":age<50?"40代":age<60?"50代":"60代";
+}
+
+// aiPremium.byAgeBand（離散ステップ）を「年代の代表年齢の点」とみなし、年齢で線形補間した base 倍率を返す。
+// 旧実装は age<30/<40/<50 の階段で、年代境界（29→30, 49→50）に不連続な崖があり、キャリアカーブ(age+0..7)が
+// 境界をまたぐと p50 が段差状に跳ねた。これを解消するため：
+//   20代→25歳 / 30代→35歳 / 40代→45歳 の (age, mul) に変換し、その間を線形補間。
+//   25歳未満は20代側にクランプ。45歳超は45歳の mul から 55歳で 1.0 へ線形に戻す（50代は出典に無いので1.0へ収束）。
+// 月次更新で byAgeBand のキーが想定外（20代/30代/40代以外）になっても、存在するものだけで点列を組み壊れない。
+const AI_BAND_REP = { "20代":25, "30代":35, "40代":45 };   // 年代→代表年齢（補間の x）
+const AI_RAMP_END_AGE = 55;                                  // 45歳超は 55歳で mul=1.0 へ収束
+function aiPremiumBaseMul(age){
+  const AP=D.aiPremium||{};
+  const pts=[];
+  for(const b of (AP.byAgeBand||[])){
+    const rep=AI_BAND_REP[b && b.band];
+    if(rep!=null && b.mul!=null) pts.push({age:rep, mul:b.mul});
+  }
+  if(!pts.length) return 1.0;
+  pts.sort((a,b)=>a.age-b.age);
+  const lo=pts[0], hi=pts[pts.length-1];
+  if(age<=lo.age) return lo.mul;                         // 25歳未満は20代側にクランプ
+  for(let i=1;i<pts.length;i++){                         // 代表年齢間を線形補間（[25,45]）
+    const a=pts[i-1], b=pts[i];
+    if(age<=b.age){ const t=(age-a.age)/(b.age-a.age); return a.mul+(b.mul-a.mul)*t; }
+  }
+  if(age>=AI_RAMP_END_AGE) return 1.0;                   // 50代後半以降は出典外＝上乗せなし
+  const t=(age-hi.age)/(AI_RAMP_END_AGE-hi.age);         // 45歳超→55歳で 1.0 へ線形に戻す
+  return hi.mul+(1.0-hi.mul)*t;
+}
+// AI/生成AI職の「ソフトウェア作成者(土台)比」上乗せ係数。
+// 対象職種(ds/mle/genai)のみ・関連スキル保有率で逓減・cap で頭打ち（過大評価回避）。
+// base は年代境界の段差を消すため aiPremiumBaseMul(age) で年齢補間する（relCount/3 逓減と cap 頭打ちは維持）。
+function aiPremiumFactor(age, role, skillsSet){
+  if(!['ds','mle','genai'].includes(role)) return {mul:1.0, applied:false};
+  const AP=D.aiPremium||{};
+  const base=aiPremiumBaseMul(age);
+  const cap=AP.cap!=null?AP.cap:1.20;
+  const relCount=['genai','agent','mlops'].filter(k=>skillsSet.has(k)).length;
+  const rel=Math.min(relCount/3,1);
+  const mul=Math.min(1+(base-1)*rel, cap);
+  return {mul, applied: mul>1.0001};
+}
+
+// 年齢主軸の percentile 推定の本体。返り値は personalRange() ラッパが利用する。
+function estimatePercentiles(){
+  const ageKnown = Number.isFinite(sel.age);
+  const age = ageKnown ? sel.age : ageFromExp(sel.exp);
+  const A = anchorAt(age);
+  const stdExp = Math.max(0, age-22);
+  // 経験は年齢アンカーへの「副次」補正。過大評価しないよう係数を小さく＆狭くクランプ。
+  const expF = clamp(1 + 0.015*(sel.exp - stdExp), 0.88, 1.15);
+  const roleF = D.model.roleMul[sel.role];
   let premRaw=0; sel.skills.forEach(k=>premRaw+=D.model.skillPrem[k]||0);
-  const prem=Math.min(premRaw,D.model.premCap);   // 実効加点（premCap で頭打ち）
-  const capped = premRaw > D.model.premCap + 1e-9; // 上限に達して切り捨てが起きているか
-  let mid=base*(1+prem);
-  let lo=mid*0.82, hi=mid*1.30;
-  if(sel.pref==='salary') hi=mid*1.45;
-  if(sel.pref==='stable'){hi=mid*1.15;lo=mid*0.9;}
-  if(sel.pref==='growth') hi=mid*1.38;
-  return {lo,mid,hi,prem,premRaw,capped,base};
+  const prem=Math.min(premRaw,D.model.premCap);
+  const skillF=1+prem;
+  const ai = aiPremiumFactor(age, sel.role, sel.skills);
+  // 勤務地補正（§8）。全国平均アンカーに対し東京>1.0／地方<1.0／リモート≒1.0。未指定は 1.0（後方互換）。
+  const locationF = (D.model.locationMul && sel.location) ? (D.model.locationMul[sel.location] ?? 1.0) : 1.0;
+  const f = expF*roleF*skillF*ai.mul*locationF;
+  // base*(1+prem)=p50 を保つ（目標逆算 renderTargetBack の前提を壊さない）。locationF は base 側にも掛ける。
+  const base = A.p50*expF*roleF*ai.mul*locationF;
+  return {
+    p25:A.p25*f, p50:A.p50*f, p75:A.p75*f, p90:A.p90*f,
+    mid:A.p50*f, lo:A.p25*f, hi:A.p90*f,
+    prem, premRaw, capped:premRaw>D.model.premCap, base,
+    estimatedSpread:A.estimatedSpread, ageKnown, age,
+    parts:{expF,roleF,skillF,aiMul:ai.mul,aiApplied:ai.applied,locationF}
+  };
+}
+
+/* personalRange()：互換ラッパ。
+   年齢主軸の estimatePercentiles() を核にしつつ、既存利用箇所（render の lo/mid/hi、
+   企業行 mid*c.mul、目標逆算 base*(1+prem)、キャリアカーブ、現年収差分、共有）が
+   無改修で動くよう従来キー（lo,mid,hi,base,prem,premRaw,capped）を必ず含める。
+   志向(pref)の調整は p50/p25 を動かさず hi にだけ薄く重ねる（中央値は実測ベースで安定）。 */
+function personalRange(){
+  const e=estimatePercentiles();
+  // pref による調整は「上振れ余地」だけを hi に薄く重ねる。p25/p50/p75 は動かさない。
+  let hi=e.hi;
+  if(sel.pref==='salary') hi=Math.max(hi, e.p90*1.12);          // 年収最大化：参考上限を少し引き上げ
+  else if(sel.pref==='growth') hi=Math.max(hi, e.p90*1.06);     // 成長/SO：やや引き上げ
+  else if(sel.pref==='stable') hi=Math.min(hi, e.p75*1.08);     // 安定志向：上振れを抑えめに
+  return {
+    lo:e.lo, mid:e.mid, hi, base:e.base, prem:e.prem, premRaw:e.premRaw, capped:e.capped,
+    p25:e.p25, p50:e.p50, p75:e.p75, p90:e.p90,
+    estimatedSpread:e.estimatedSpread, ageKnown:e.ageKnown, age:e.age, parts:e.parts
+  };
 }
 // 経験年数 → ageBands の年代を保守的にマッピング。経験≠年齢のため、若い側に寄せて過大評価を避ける。
 // 実在の出典つきデータ(ageBands)を死蔵させず透明性高く活用する。
@@ -1103,19 +1379,35 @@ function ageBandForExp(y){
   idx = Math.min(idx, bands.length-1);
   return bands[idx];
 }
+// 年齢 → ageBands の年代を band ラベル一致で引く（#4：age 入力時は経験フォールバックでなく age 基準の年代帯）。
+// ageToBand(age) と同じ区切りで "20代".."60代" を得て、ageBands に該当ラベルがあればそれを返す。
+// 該当が無い（例: 60代＝出典の ageBands に無い）場合は最後のバンドにクランプ（ageBandForExp と同じ端クランプ思想）。
+function ageBandForAge(age){
+  const bands=D.ageBands||[];
+  if(!bands.length) return null;
+  const label=ageToBand(age);
+  const hit=bands.find(b=>b.band===label);
+  return hit || bands[bands.length-1];
+}
 function renderAgeRange(mid){
   const el=$('agerange'); if(!el) return;
-  const b=ageBandForExp(sel.exp);
+  // #4：age 入力時は age 基準の年代帯（実測帯と年齢が直接対応）。未入力時のみ経験からの保守推定にフォールバック。
+  const byAge=Number.isFinite(sel.age);
+  const b=byAge ? ageBandForAge(sel.age) : ageBandForExp(sel.exp);
   if(!b){ el.innerHTML=''; return; }
   // あなたの中央値が実測帯の上/中/下か（±ゆとりは取らず素直に判定）
   let pos, cls;
   if(mid>b.hi){ pos='実測帯より上'; cls='hi'; }
   else if(mid<b.lo){ pos='実測帯より下'; cls='lo'; }
   else { pos='実測帯の中ほど'; cls='mid'; }
+  // 注記：age 由来なら「年齢から該当年代を選択」、経験フォールバックなら従来どおり「経験から保守推定」と正直に出し分け。
+  const cav=byAge
+    ? '※入力年齢から該当年代を選択（実測帯は実在の年代別集計／本ツール推定の位置づけ判定）。'
+    : '※経験年数から年代を保守的に推定（経験≠年齢／本ツール推定）。出典は実在の年代別集計です。';
   el.innerHTML=`<span>同年代の実測レンジ（${esc(b.band)}）</span>`
     +`<span class="ar-val">${b.lo}–${b.hi}万</span> ${srcBadge(b.srcId)}`
     +`<span class="ar-pos ${cls}">あなたの中央値は${pos}</span>`
-    +`<span class="ar-cav">※経験年数から年代を保守的に推定（経験≠年齢／本ツール推定）。出典は実在の年代別集計です。</span>`;
+    +`<span class="ar-cav">${cav}</span>`;
 }
 // スキル選択の動的サマリ（選択中◯個・加点合計+◯%・premCap 到達で頭打ち明示）。
 function renderSkillSum(prem,premRaw,capped){
@@ -1136,24 +1428,53 @@ function renderSkillSum(prem,premRaw,capped){
       +`<span style="color:#8b96bd">（上限+${capPct}%まで余地あり・本ツール推定）</span>`;
   }
 }
-/* ===== Batch5-1：現年収比の差分行 =====
-   現年収（レンジ中央値）と本ツール想定中央値の差を提示。
-   未入力なら何も出さない（盛らない）。マイナスは中立色＋「現職が市場より高め」と誠実に。 */
-function renderCurrentDiff(mid){
+/* ===== Batch5-1 → Wave2：現年収の2系統表示 =====
+   現年収 cm 入力時に「市場ポジション」と「転職時の昇給見込み（実測）」を併記する。
+   - 市場ポジション：あなたの市場中央値(p50)＝実在平均×本ツール推定式。土台は年齢アンカー(official)。
+     cm との大小を「現職は市場中央より高め/低め」と正直に出す。
+   - 昇給見込み：D.raiseOnChange の実測（昇給率58%・昇給者平均+72.7万）を agency バッジで。
+     パーセント帯は cm×+5%〜+20%（中央+12%相当）を目安提示。中央値は非公表(null)と明記。
+   推定（p50）を実測に見せない／実測（昇給率）を推定に見せないよう tier を厳密に付与する。
+   未入力なら何も出さない（盛らない）。引数 e = estimatePercentiles()。 */
+function renderCurrentDiff(e){
   const el=$('currentdiff'); if(!el) return;
   const cm=currentMid();
-  if(!cm){ el.style.display='none'; el.innerHTML=''; return; }
-  const d=Math.round(mid-cm), pct=Math.round((mid-cm)/cm*100);
-  el.classList.remove('up','down');
-  if(d>=0){
-    el.classList.add('up');
-    el.innerHTML=`現年収比 <span class="cd-amt">+${fmt(d)}万（+${pct}%）</span>`
-      +`<span class="cd-note">＝本ツール想定式（実在平均×推定）との比較。実オファーは交渉・評価で変動します。</span>`;
-  } else {
-    el.classList.add('down');
-    el.innerHTML=`現年収比 <span class="cd-amt">${fmt(d)}万（${pct}%）</span>`
-      +`<span class="cd-note">この職種タイプでは現職が市場より高め。維持か、別の軸（裁量・成長・働き方）で評価を。本ツール想定式との比較です。</span>`;
+  if(!cm){ el.style.display='none'; el.innerHTML=''; el.classList.remove('up','down'); return; }
+  const p50=Math.round(e.p50);
+  // 系統1：市場ポジション（official 土台バッジ＝年齢アンカー由来）。
+  const officialBadge=(D.ageAnchor&&D.ageAnchor.srcId&&D.sources[D.ageAnchor.srcId])
+    ? srcBadge(D.ageAnchor.srcId) : tierBadgeInline('official');
+  const d=p50-cm, pct=Math.round((p50-cm)/cm*100);
+  let posTxt, posCls;
+  if(d>0){ posTxt=`現職は市場中央より低め（+${fmt(d)}万・+${pct}%の余地）`; posCls='hi'; }
+  else if(d<0){ posTxt=`現職は市場中央より高め（${fmt(d)}万・${pct}%）`; posCls='lo'; }
+  else { posTxt='現職は市場中央とほぼ同水準'; posCls='mid'; }
+  el.classList.remove('up','down'); el.classList.add(d>=0?'up':'down');
+
+  // 系統2：転職時の昇給見込み（実測）。raiseOnChange が無ければこの系統は出さない（盛らない）。
+  const ro=D.raiseOnChange;
+  let sys2='';
+  if(ro){
+    const upPct=ro.upRatio!=null?Math.round(ro.upRatio*100):null;
+    const roBadge=(ro.srcId&&D.sources[ro.srcId])?srcBadge(ro.srcId):tierBadgeInline('agency');
+    // パーセント帯（目安）は cm に対して +5%〜+20%（中央+12%相当）を当てる。
+    const loMan=Math.round(cm*1.05), midMan=Math.round(cm*1.12), hiMan=Math.round(cm*1.20);
+    const medTxt = ro.medianRaise==null ? '中央値は非公表（不明）' : `中央 +${fmt(ro.medianRaise)}万`;
+    const avgUpTxt = ro.avgRaiseIfUp!=null ? `昇給した人の平均は <b>+${fmt(ro.avgRaiseIfUp)}万</b>` : '';
+    sys2=`<div class="cd-sys"><div class="cd-head">転職時の昇給見込み（実測） ${roBadge}</div>`
+      +(upPct!=null?`昇給する人は約 <b>${upPct}%</b>。`:'')
+      +`昇給した場合 現年収 <b>${fmt(cm)}万</b> × <span class="cd-amt">+5%〜+20%</span>`
+      +` ＝ <b>${fmt(loMan)}〜${fmt(hiMan)}万</b>（中央 +12%相当 ≒ ${fmt(midMan)}万）。`
+      +`<span class="cd-foot">${avgUpTxt}${avgUpTxt?'。':''}${medTxt}。${esc(ro.note||'')}</span></div>`;
   }
+
+  el.innerHTML=
+    `<div class="cd-sys"><div class="cd-head">市場ポジション ${officialBadge}</div>`
+    +`あなたの市場中央値(p50) <span class="cd-amt">${fmt(p50)}万</span>`
+    +` ／ 現年収 <b>${fmt(cm)}万</b> → <span class="cd-pos ${posCls}">${posTxt}</span>`
+    +`<span class="cd-foot">p50＝実在の市場平均×本ツール推定式（土台は年齢別の公式統計）。実測の確定額ではありません。</span></div>`
+    +sys2
+    +`<span class="cd-note">※「希望年収」と「実測の昇給」は別物です。昇給見込みは <b>現職給与が交渉の基準</b>になります（盛らず実測レンジで提示）。</span>`;
   el.style.display='';
 }
 
@@ -1167,33 +1488,43 @@ function renderActionMoves(){
     +`<div><b>${esc(m.t)}</b><span class="am-why">なぜ効く：${esc(m.why)}</span></div></div>`).join('');
 }
 
-/* ===== Batch5-5：キャリア年収カーブ外挿（依存ゼロの SVG 折れ線） =====
-   exp..exp+7 を baseByExp(y)*roleMul*(1+prem) でループ計算。
-   2本：現スキルのまま（実線）／最大伸びしろ習得（破線・premCap まで貪欲に積む）。
-   baseByExp は連続なので階段は出ない。 */
-function maxReachablePrem(){
-  // 現在の選択に未取得スキルを skillPrem 降順で premCap まで積んだ実効加点。
-  let raw=0; sel.skills.forEach(k=>raw+=D.model.skillPrem[k]||0);
-  const missing=Object.keys(D.model.skillPrem).filter(k=>!sel.skills.has(k))
-    .sort((a,b)=>(D.model.skillPrem[b]||0)-(D.model.skillPrem[a]||0));
-  for(const k of missing){ if(raw>=D.model.premCap) break; raw+=D.model.skillPrem[k]||0; }
-  return Math.min(raw, D.model.premCap);
+/* ===== Batch5-5 → Wave3：キャリア年収カーブ（percentile ベース・依存ゼロの SVG 折れ線） =====
+   起点 age = sel.age || ageFromExp(sel.exp)。i=0..7 で age+i の percentile を再計算する。
+   主軸は anchorAt(age+i)（年齢別の実測 p50）。同じ役割・スキルを保ち、経験は加齢に合わせて
+   sel.exp+i と進める（expF が一定に保たれ、加齢効果＝年齢アンカーの変化として素直に出る）。
+   描くのは p50（中央）と p75（上位）の2本のみ。p90 外挿は不確実なので出さない。
+   年齢アンカーが実測下降する区間（40代後半→50代前半）もそのまま誠実に描く。
+   p75 は「上限の目安」（spread.ratio 由来の上位分位）で、過大評価を避け貪欲な最大スキル積みはしない。 */
+function percentilesAtAge(age, exp){
+  // estimatePercentiles と同一の合成順（anchor × expF × roleF × skillF × aiMul）を、任意 age/exp で再現。
+  const A=anchorAt(age);
+  const stdExp=Math.max(0, age-22);
+  const expF=clamp(1 + 0.015*(exp - stdExp), 0.88, 1.15);
+  const roleF=D.model.roleMul[sel.role]||1;
+  let premRaw=0; sel.skills.forEach(k=>premRaw+=D.model.skillPrem[k]||0);
+  const skillF=1+Math.min(premRaw,D.model.premCap);
+  const ai=aiPremiumFactor(age, sel.role, sel.skills);
+  // 勤務地補正（§8）。estimatePercentiles と同一の合成（…×aiMul×locationF）でカーブも一致させる。
+  const locationF=(D.model.locationMul && sel.location)?(D.model.locationMul[sel.location] ?? 1.0):1.0;
+  const f=expF*roleF*skillF*ai.mul*locationF;
+  return { p50:A.p50*f, p75:A.p75*f, estimatedSpread:A.estimatedSpread };
 }
-function renderCurve(prem){
+function renderCurve(e){
   const host=$('curve'); if(!host) return;
-  if($('curve-from')) $('curve-from').textContent=sel.exp;
-  const rm=D.model.roleMul[sel.role]||1;
-  const premMax=maxReachablePrem();
-  const years=[]; for(let i=0;i<=7;i++) years.push(Math.min(20, sel.exp+i));
-  // 同じ年が連続（exp が高くクランプ）しても折れ線が潰れないよう、x はインデックス基準で等間隔に。
-  const now = years.map(y=>baseByExp(y)*rm*(1+prem));
-  const max = years.map(y=>baseByExp(y)*rm*(1+premMax));
-  const allVals=now.concat(max);
+  const startAge = Number.isFinite(sel.age) ? sel.age : ageFromExp(sel.exp);
+  // 起点ラベル（hint 内 #curve-from）は年齢起点に。年齢未入力時は「経験から補完した年齢」と明示。
+  if($('curve-from')) $('curve-from').textContent = Number.isFinite(sel.age) ? `${startAge}歳` : `約${startAge}歳（経験から補完）`;
+  const ages=[]; for(let i=0;i<=7;i++) ages.push(Math.min(62, startAge+i));   // 年齢アンカーの上端 62 でクランプ
+  // 経験も加齢に合わせて進める（expF を一定に保ち、加齢効果を年齢アンカーの変化として表す）。0..40 でクランプ。
+  const p50s=ages.map((a,i)=>percentilesAtAge(a, Math.min(40, sel.exp+i)).p50);
+  const p75s=ages.map((a,i)=>percentilesAtAge(a, Math.min(40, sel.exp+i)).p75);
+  const anySpreadEst=ages.some((a,i)=>percentilesAtAge(a, Math.min(40, sel.exp+i)).estimatedSpread);
+  const allVals=p50s.concat(p75s);
   const vmin=Math.min(...allVals), vmax=Math.max(...allVals);
   // 描画領域
   const W=520, H=210, padL=46, padR=14, padT=14, padB=30;
   const innerW=W-padL-padR, innerH=H-padT-padB;
-  const n=years.length;
+  const n=ages.length;
   const x=i=> padL + (n<=1?0:innerW*i/(n-1));
   const lo=Math.floor(vmin/50)*50, hi=Math.ceil(vmax/50)*50;
   const span=Math.max(1,hi-lo);
@@ -1206,53 +1537,64 @@ function renderCurve(prem){
     grid+=`<line class="curve-grid" x1="${padL}" y1="${yy.toFixed(1)}" x2="${(W-padR).toFixed(1)}" y2="${yy.toFixed(1)}"/>`;
     grid+=`<text class="curve-txt" x="${padL-6}" y="${(yy+3).toFixed(1)}" text-anchor="end">${Math.round(v)}</text>`;
   }
-  // X 軸ラベル（経験年・端点と中間のみ間引き表示）
+  // X 軸ラベル（年齢・端点と中間のみ間引き表示）
   let xlab='';
-  years.forEach((yr,i)=>{
+  ages.forEach((a,i)=>{
     if(i===0||i===n-1||i===Math.floor((n-1)/2)){
-      xlab+=`<text class="curve-txt" x="${x(i).toFixed(1)}" y="${(H-padB+16)}" text-anchor="middle">${yr}年</text>`;
+      xlab+=`<text class="curve-txt" x="${x(i).toFixed(1)}" y="${(H-padB+16)}" text-anchor="middle">${a}歳</text>`;
     }
   });
-  // 端点の値ラベル（最大伸びしろ線の終点・現スキル線の終点）
-  const endNow=now[n-1], endMax=max[n-1];
-  const dots=arr=>arr.map((v,i)=>(i===0||i===n-1)?`<circle class="curve-dot${arr===max?' max':''}" cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3.2"/>`:'').join('');
-  const svg=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="経験${sel.exp}年から7年先までの想定年収カーブ。実線は現スキルのまま、破線は最大伸びしろを習得した場合。いずれも本ツール推定の外挿。">`
+  // 端点の値ラベル（p75 上位線の終点・p50 中央線の終点）
+  const endP50=p50s[n-1], endP75=p75s[n-1];
+  const dots=arr=>arr.map((v,i)=>(i===0||i===n-1)?`<circle class="curve-dot${arr===p75s?' max':''}" cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3.2"/>`:'').join('');
+  const svg=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${startAge}歳から7年先（${ages[n-1]}歳）までの想定年収カーブ。実線は中央(p50)、破線は上位(p75)。いずれも年齢別の実測中央値を主軸にした本ツール推定の外挿。40代後半から50代前半は実測上いったん下降します。">`
     + grid
     + `<line class="curve-axis" x1="${padL}" y1="${padT}" x2="${padL}" y2="${H-padB}"/>`
     + `<line class="curve-axis" x1="${padL}" y1="${H-padB}" x2="${W-padR}" y2="${H-padB}"/>`
-    + (premMax>prem+1e-9?`<polyline class="curve-line max" points="${pts(max)}"/>`:'')
-    + `<polyline class="curve-line" points="${pts(now)}"/>`
-    + (premMax>prem+1e-9?dots(max):'')
-    + dots(now)
-    + `<text class="curve-txt val" x="${(x(n-1)-2).toFixed(1)}" y="${(y(endNow)-7).toFixed(1)}" text-anchor="end">${fmt(endNow)}万</text>`
-    + (premMax>prem+1e-9?`<text class="curve-txt val" x="${(x(n-1)-2).toFixed(1)}" y="${(y(endMax)-7).toFixed(1)}" text-anchor="end" style="fill:var(--accent)">${fmt(endMax)}万</text>`:'')
+    + xlab
+    + `<polyline class="curve-line max" points="${pts(p75s)}"/>`
+    + `<polyline class="curve-line" points="${pts(p50s)}"/>`
+    + dots(p75s)
+    + dots(p50s)
+    + `<text class="curve-txt val" x="${(x(n-1)-2).toFixed(1)}" y="${(y(endP50)+(endP75>=endP50?14:-7)).toFixed(1)}" text-anchor="end">${fmt(endP50)}万</text>`
+    + `<text class="curve-txt val" x="${(x(n-1)-2).toFixed(1)}" y="${(y(endP75)-7).toFixed(1)}" text-anchor="end" style="fill:var(--accent)">${fmt(endP75)}万</text>`
     + `</svg>`;
   host.innerHTML=svg;
-  // 凡例
+  // 凡例（中央 p50 ／ 上位 p75）。p75 は上限の目安である旨を明示。
   const lg=$('curvelegend'); if(lg){
-    const capPct=Math.round(D.model.premCap*100);
-    let html=`<span class="cl-item"><span class="cl-swatch"></span>現スキルのまま（${sel.exp}→${years[n-1]}年で <b>${fmt(now[n-1])}万</b>）</span>`;
-    if(premMax>prem+1e-9){
-      html+=`<span class="cl-item"><span class="cl-swatch max"></span>最大伸びしろ習得（加点上限+${capPct}%到達時 <b>${fmt(max[n-1])}万</b>）</span>`;
-    } else {
-      html+=`<span class="cl-item" style="color:#9aa6c8">スキル加点は既に上限(+${capPct}%)。破線は現スキル線と一致するため省略。</span>`;
-    }
-    lg.innerHTML=html;
+    lg.innerHTML=`<span class="cl-item"><span class="cl-swatch"></span>中央(p50)（${startAge}→${ages[n-1]}歳で <b>${fmt(endP50)}万</b>）</span>`
+      +`<span class="cl-item"><span class="cl-swatch max"></span>上位(p75・上限の目安)（同 <b>${fmt(endP75)}万</b>）</span>`
+      +(anySpreadEst?`<span class="cl-item" style="color:#9aa6c8">※上位(p75)は分位が公的統計に無く推定（中央 p50 は実測ベース）</span>`:'');
   }
 }
 
-/* ===== Batch5-6：目標年収の逆算（貪欲法） =====
+/* ===== Batch5-6：目標年収の逆算（貪欲法・age-anchored に統一） =====
    ①未取得スキルを skillPrem 降順で premCap まで積み、到達できるか判定。
-   ②届かなければ経験+N年で baseByExp の伸びを使い到達年数を逆算。
-   ③それでも届かなければ企業タイプ（companies.mul の最大）変更でも判定し、最終的に誠実に「届きにくい」と返す。 */
+   ②届かなければ「経験+N年（=年齢も+N年に連動）」で年齢アンカー p50 の伸びを使い到達年数を逆算。
+   ③それでも届かなければ企業タイプ（companies.mul の最大）変更でも判定し、最終的に誠実に「届きにくい」と返す。
+   【#1 正確性改修 2026-06】②の逆算を旧 baseByExp(expCurve) スケールから anchoredMidMaxSkill()
+   （年齢アンカー p50 系・estimatePercentiles と同一の合成順）に置換。現状値(base＝aiMul/locationF 込み)と
+   同一スケールに揃うため「スキル上限で届かない額が、非現実的に短い経験年数で到達」という矛盾を解消する。
+   ①の skillMax と ③の company も base 由来＝既に age-anchored なので、ボックス全体が単一の p50 スケールで一貫する。 */
+// 任意 (age, exp) における「最大スキル(premCap)前提」の年齢アンカー p50（万円）。
+// estimatePercentiles / percentilesAtAge と同一の合成（anchor × expF × roleF × (1+cap) × aiMul × locationF）。
+// 現状の sel.role / sel.location を保持したまま、年齢と経験だけを動かして到達可能性を測る。
+function anchoredMidMaxSkill(age, exp){
+  const A=anchorAt(age);
+  const stdExp=Math.max(0, age-22);
+  const expF=clamp(1 + 0.015*(exp - stdExp), 0.88, 1.15);
+  const roleF=D.model.roleMul[sel.role]||1;
+  const ai=aiPremiumFactor(age, sel.role, sel.skills);   // 最大スキル時は関連スキル保有で rel が上がる想定
+  const locationF=(D.model.locationMul && sel.location)?(D.model.locationMul[sel.location] ?? 1.0):1.0;
+  return A.p50 * expF * roleF * (1+D.model.premCap) * ai.mul * locationF;
+}
 function renderTargetBack(base, prem, premRaw){
   const el=$('targetbox'); if(!el) return;
   const T=targetVal();
   if(!T){ el.style.display='none'; el.innerHTML=''; return; }
   el.classList.remove('reach','miss');
-  const rm=D.model.roleMul[sel.role]||1;
   const cap=D.model.premCap;
-  const curMid=base*(1+prem);   // = baseByExp(exp)*roleMul*(1+実効加点)
+  const curMid=base*(1+prem);   // = 年齢アンカー p50（現状値・base＝anchor×expF×roleF×aiMul×locationF）× (1+実効加点)
   // 既に到達済み
   if(curMid>=T-0.5){
     el.classList.add('reach');
@@ -1282,18 +1624,22 @@ function renderTargetBack(base, prem, premRaw){
       +`<span class="tb-cav">※貪欲法でスキル加点を上限+${Math.round(cap*100)}%まで積んだ試算。実オファーは交渉・評価で変動します。</span>`;
     el.style.display=''; return;
   }
-  // スキルを上限まで積んだ場合の中央値（ここから先は経験・企業で詰める）
+  // スキルを上限まで積んだ場合の中央値（ここから先は経験・企業で詰める）。
+  // = anchoredMidMaxSkill(startAge, sel.exp)（現年齢・最大スキル）＝base*(1+cap)。age-anchored 系で一貫。
   const midSkillMax=base*(1+cap);
   const skillNote = picked.length
     ? `スキルを上限(+${Math.round(cap*100)}%)まで積んでも ${fmt(midSkillMax)}万`
     : `現スキルのみでは ${fmt(curMid)}万`;
-  // ②経験+N年（最大伸びしろ習得＝premMax 前提で、到達に必要な追加年数を baseByExp で逆算）
+  // ②経験+N年（=年齢も+N年に連動・最大スキル習得前提）。年齢アンカー p50 系で到達に必要な追加年数を逆算。
+  //   旧 baseByExp(expCurve) 混在を廃止し、現状値(base)と同一スケールの anchoredMidMaxSkill で測る（#1 矛盾解消）。
+  //   年齢は ageAnchor 上端(62)でクランプ（到達不能なら needYears=null＝「経験を重ねても難しい」と正直に返す）。
+  const startAge = Number.isFinite(sel.age) ? sel.age : ageFromExp(sel.exp);
   let needYears=null;
   for(let add=1; add<=20; add++){
-    const y=Math.min(20, sel.exp+add);
-    const m=baseByExp(y)*rm*(1+cap);
+    const age=Math.min(62, startAge+add);
+    const m=anchoredMidMaxSkill(age, sel.exp+add);
     if(m>=T-0.5){ needYears=add; break; }
-    if(y>=20) break;
+    if(age>=62) break;   // 年齢上端に達したらこれ以上アンカーは伸びない＝逆算打ち切り
   }
   // ③企業タイプ変更（最も高い mul の企業に乗る＝最大伸びしろ習得時）
   const bestMul=Math.max(...(D.companies||[{mul:1}]).map(c=>c.mul||1));
@@ -1304,44 +1650,131 @@ function renderTargetBack(base, prem, premRaw){
   let body=`<div class="tb-head"><span aria-hidden="true">🧭</span>目標 <span class="tb-amt">${fmt(T)}万</span> は現条件では推定上 届きにくい</div>`;
   body+=`<span style="display:block;color:#cdd7f5">${skillNote}（目標まで あと約 ${fmt(Math.max(0,T-midSkillMax))}万）。次のいずれかが必要：</span>`;
   body+='<ol>';
-  if(needYears!=null) body+=`<li>経験 <b>+${needYears}年</b>（最大スキル習得前提・想定中央が目標に到達）</li>`;
-  else body+=`<li>経験を重ねても本職種の推定カーブ（最大20年）では単独到達は難しい</li>`;
+  if(needYears!=null) body+=`<li>経験 <b>+${needYears}年</b>（年齢も+${needYears}歳に連動・最大スキル習得前提で想定中央が目標に到達）</li>`;
+  else body+=`<li>経験（年齢）を重ねても、年齢別実測の中央値カーブ上は単独到達が難しい（40代後半以降は実測上いったん下降します）</li>`;
   if(reachByCompany && bestCo) body+=`<li>より高単価の企業タイプ（<b>${esc(bestCo.name)}</b>・市場 ${esc(bestCo.range)}）へ移る（最大スキル習得時に到達域）</li>`;
   else body+=`<li>職種軸の変更（より単価の高い職種・領域への転換）`+`</li>`;
   body+='</ol>';
-  body+=`<span class="tb-cav">※baseByExp / roleMul / companies.mul を使った本ツール推定の逆算。盛らず「届きにくい」と正直に提示します。実オファーは交渉・評価で変動します。</span>`;
+  body+=`<span class="tb-cav">※年齢アンカー p50（年齢別の実測中央値）× roleMul × スキル上限 × companies.mul を使った本ツール推定の逆算（現状値と同一スケール）。盛らず「届きにくい」と正直に提示します。実オファーは交渉・評価で変動します。</span>`;
   el.innerHTML=body;
   el.style.display='';
+}
+
+/* ===== §8：計算内訳の完全開示 =====
+   estimatePercentiles().parts（expF/roleF/skillF/aiMul/aiApplied）と age/estimatedSpread を使い、
+   p50 が「年齢アンカー × 各補正」でどう積み上がったかを一段ずつ開示する。
+   各行に該当 tier バッジを付け、推定（tool/agency）と実測（official）を視覚的に区別する。
+   p50 = anchorP50 × expF × roleF × skillF × aiMul（estimatePercentiles と同一の合成順）。 */
+function renderCalcBreakdown(e){
+  const el=$('calcbreak-body'); if(!el) return;
+  const {expF,roleF,skillF,aiMul,aiApplied,locationF}=e.parts;
+  const anchorP50=anchorAt(e.age).p50;            // 年齢アンカー素値（official 実測の補間）
+  const stdExp=Math.max(0, e.age-22);             // 年齢相当の標準経験年数
+  const prem=e.prem;                              // 実効スキル加点（premCap 内）
+  // 年齢アンカーの出典バッジ（official・mhlw_chingin にリンク）。無ければ tool バッジにフォールバック。
+  const anchorBadge = (D.ageAnchor&&D.ageAnchor.srcId&&D.sources[D.ageAnchor.srcId])
+    ? srcBadge(D.ageAnchor.srcId) : tierBadgeInline('official');
+  const fac=v=>'×'+(v).toFixed(2);                // 係数表示（×1.08 等）
+  // 行ヘルパ：演算子 / ラベル(＋小注) / 係数 / バッジ
+  const row=(op,label,sub,facHtml,badge,extraCls)=>
+    `<tr${extraCls?` class="${extraCls}"`:''}>`
+    +`<td class="cb-op">${op}</td>`
+    +`<td class="cb-label"><b>${label}</b>${sub?`<span class="cb-sub">${sub}</span>`:''}</td>`
+    +`<td class="cb-fac">${facHtml}</td>`
+    +`<td class="cb-badge">${badge}</td></tr>`;
+  const bandLabel=ageToBand(e.age);
+  let rows='';
+  // ① 年齢アンカー（土台・official 実測）
+  rows+=row('', `年齢アンカー（${e.age}歳・ソフトウェア作成者）`,
+    `厚労省 賃金構造の年齢別実測 p50（${esc(bandLabel)}相当を補間）`,
+    `${fmt(anchorP50)}万`, anchorBadge);
+  // ② 経験補正（tool・年齢相当からのズレを副次補正）
+  rows+=row('×', '経験補正',
+    `あなた ${sel.exp}年 / 年齢相当 ${stdExp}年（差分を小さく反映・0.88〜1.15でクランプ）`,
+    fac(expF), tierBadgeInline('tool'));
+  // ③ 職種（tool・roleMul）
+  rows+=row('×', `職種（${esc(roleLabel[sel.role]||sel.role)}）`,
+    `roleMul（職種ごとの市場係数）`,
+    fac(roleF), tierBadgeInline('tool'));
+  // ④ スキル加点（tool・premCap 内の実効加点）
+  rows+=row('×', `スキル加点（+${Math.round(prem*100)}%）`,
+    e.capped?`単純合計+${Math.round(e.premRaw*100)}%は上限+${Math.round(D.model.premCap*100)}%で頭打ち`
+            :`選択スキルの加点合計（上限+${Math.round(D.model.premCap*100)}%）`,
+    fac(skillF), tierBadgeInline('tool'));
+  // ⑤ AI/生成AI上乗せ（agency・対象職種かつ関連スキル時のみ）。非該当は「対象外」。
+  const aiCapPct=Math.round((((D.aiPremium&&D.aiPremium.cap)||1.20)-1)*100);
+  if(aiApplied){
+    rows+=row('×', 'AI/生成AI上乗せ',
+      `ソフトウェア作成者比の上乗せ（対象職種×関連スキル保有率で逓減・上限+${aiCapPct}%）`,
+      fac(aiMul), (D.aiPremium&&D.aiPremium.srcId&&D.sources[D.aiPremium.srcId])?srcBadge(D.aiPremium.srcId):tierBadgeInline('agency'));
+  } else {
+    rows+=row('×', 'AI/生成AI上乗せ',
+      ['ds','mle','genai'].includes(sel.role)?'関連スキル（生成AI/RAG/MLOps）未選択のため対象外':'対象職種（DS/ML/生成AI）でないため対象外',
+      '<span class="cb-na">対象外（×1.00）</span>', tierBadgeInline('agency'));
+  }
+  // ⑥ 勤務地補正（tool・locationMul）。全国平均アンカーに対し東京>1.0／地方<1.0／リモート≒1.0。未指定は対象外(×1.00)。
+  const locLabel = sel.location ? ((LOC_OPTS.find(o=>o.v===sel.location)||{}).label||sel.location) : null;
+  if(sel.location && locationF!=null){
+    rows+=row('×', `勤務地（${esc(locLabel)}）`,
+      `全国平均が土台。東京/首都圏>1.0・地方<1.0・リモート≒1.0（doda/求人ボックスの地域別比）`,
+      fac(locationF), tierBadgeInline('tool'));
+  } else {
+    rows+=row('×', '勤務地',
+      '未指定のため補正なし（指定すると全国平均比で東京/地方を反映）',
+      '<span class="cb-na">未指定（×1.00）</span>', tierBadgeInline('tool'));
+  }
+  // = 中央値（p50）
+  rows+=row('=', '中央値（p50）', '', `<span>${fmt(e.p50)}万</span>`, '', 'cb-total');
+
+  // 注記：分位の推定・年齢補完を該当時のみ併記（盛らない）。
+  const cav=[];
+  cav.push('各係数は実在の市場平均（年齢アンカー＝<b>公式統計</b>）に、本ツール推定の補正を掛けたものです。');
+  if(e.estimatedSpread) cav.push('幅（p25/p75/p90）は分位が公的統計に無く、中央値からの<b>推定</b>です（中央値は実測ベース）。');
+  if(!e.ageKnown)       cav.push('年齢は未入力のため<b>経験年数から補完</b>（22+経験年数・控えめにクランプ）。');
+  cav.push('実オファーは面接評価・採用枠・交渉で上下します。');
+
+  el.innerHTML=`<table class="cb-table"><tbody>${rows}</tbody></table>`
+    +`<div class="cb-cav">${cav.map(c=>'※ '+c).join('<br>')}</div>`;
 }
 
 function render(){
   // render は innerHTML を総入れ替えするため、開いている出典ポップが古い DOM を指したまま
   // 取り残される参照ずれを防ぐ。冒頭で開いているポップを畳む（focus 復帰はしない＝入力操作の流れを邪魔しない）。
   if(pop) closePop(false);
-  const {lo,mid,hi,prem,premRaw,capped,base}=personalRange();
+  const {lo,mid,hi,prem,premRaw,capped,base,p25,p50,p75,p90,estimatedSpread,ageKnown}=personalRange();
   const smid=$('salmid');
   renderSkillSum(prem,premRaw,capped);
-  smid.innerHTML=fmt(mid)+'<span class="unit">万円</span>';
-  $('salrange').textContent='想定レンジ '+fmt(lo)+'〜'+fmt(hi)+'万円 / 年';
+  // bigfig＝p50（中央値）。mid===p50 だが意味を明示して p50 を採用。
+  smid.innerHTML=fmt(p50)+'<span class="unit">万円</span>';
+  // Wave1：percentile を主役にしたレンジ文。「多くの人(p25〜p75)／中央(p50)／参考上限(p90)」を明示。
+  $('salrange').textContent=`多くの人(p25〜p75) ${fmt(p25)}〜${fmt(p75)}万 ／ 中央 ${fmt(p50)}万 ／ 参考上限(p90) ${fmt(p90)}万`;
   $('examplenote').style.display = touched ? 'none' : '';
   // 変化フィードバック：中央値が動いたら一瞬発光
   if(prevMid!==null && Math.round(mid)!==Math.round(prevMid)){
     smid.classList.remove('flash'); void smid.offsetWidth; smid.classList.add('flash');
   }
-  // 年収バーのスケールは入力で動く（高年収でも上限に張り付かないよう hi に合わせて拡張）
-  const SMIN=300, SMAX = hi<=1300 ? 1300 : Math.min(2500, Math.ceil(hi/100)*100);
+  // 年収バーのスケールは入力で動く。Wave1：参考上限 p90 が必ずバー内に収まるよう上端を p90/hi の大きい方に合わせる
+  // （stable 志向で hi を抑えた場合でも p90 が見切れないように）。
+  const barTop=Math.max(hi, p90);
+  const SMIN=300, SMAX = barTop<=1300 ? 1300 : Math.min(2500, Math.ceil(barTop/100)*100);
   const toPct=v=>Math.max(0,Math.min(100,(v-SMIN)/(SMAX-SMIN)*100));
   const step=(SMAX-SMIN)/5;
   $('scale').innerHTML=Array.from({length:6},(_,i)=>{
-    const val=SMIN+i*step, plus=(i===5 && SMAX>=2500 && hi>2500)?'+':'';
+    const val=SMIN+i*step, plus=(i===5 && SMAX>=2500 && barTop>2500)?'+':'';
     return `<span>${Math.round(val)}${plus}</span>`;
   }).join('');
   $('benchticks').innerHTML=D.benchmarks.map(b=>
     `<span class="btick" style="left:${toPct(b.avg)}%" title="${esc(b.role)} 市場平均 ${b.avg}万"></span>`).join('');
-  const l=toPct(lo), w=Math.max(6,toPct(hi)-toPct(lo));
-  const f=$('fill'); f.style.left=l+'%'; f.style.width=w+'%';
-  const midPct=toPct(mid);
-  $('midmark').style.left=midPct+'%';   // 中央値マーカー
+  // Wave1：percentile バー。p25–p75 を濃いフィル（ボリュームゾーン）、p75–p90 を薄いハッチ（参考上限）、p50 を midmark。
+  const lVol=toPct(p25), wVol=Math.max(4,toPct(p75)-toPct(p25));   // ボリュームゾーン（多くの人）
+  const lRef=toPct(p75), wRef=Math.max(0,toPct(p90)-toPct(p75));   // 参考上限ゾーン（p75→p90）
+  const f=$('fill'); f.style.left=lVol+'%'; f.style.width=wVol+'%';
+  // 参考上限ゾーン（薄いハッチ）。専用 DOM が無ければ生成して fill の後ろに差し込む（既存構造を壊さない）。
+  let fref=$('fillref');
+  if(!fref){ fref=document.createElement('div'); fref.id='fillref'; fref.className='fillref'; fref.setAttribute('aria-hidden','true'); f.parentNode.insertBefore(fref, f.nextSibling); }
+  fref.style.left=lRef+'%'; fref.style.width=wRef+'%';
+  const midPct=toPct(p50);
+  $('midmark').style.left=midPct+'%';   // 中央値マーカー（p50）
   // バー直下の可視ラベル（title 非依存）：▼直下に「あなた」、各市場平均線下に職種略称＋「市場平均」。
   // ラベルが「あなた」と重なる/近接するものは間引いて潰れを防ぐ（左右 6% 以内は非表示）。
   const shortRole=r=>{ const s=String(r||''); return s.length>7 ? s.slice(0,6)+'…' : s; };
@@ -1362,6 +1795,15 @@ function render(){
     $('posnote').innerHTML = prem>0 ? (arrow+'スキル加点 +'+Math.round(prem*100)+'%') : '';
   }
   prevMid=mid; prevPrem=prem;
+
+  // Wave1：不確実性の開示。分位が推定なら1行、年齢未入力なら1行（該当時のみ・.hint で控えめに）。
+  const unc=$('uncertainty');
+  if(unc){
+    const lines=[];
+    if(estimatedSpread) lines.push('※この年齢帯は分位が公的統計に無く、幅は推定（中央値は実測ベース）');
+    if(!ageKnown)       lines.push('※年齢未入力のため経験年数から保守推定');
+    unc.innerHTML=lines.map(t=>`<div class="hint">${t}</div>`).join('');
+  }
 
   // 同年代の実測レンジ（ageBands）。経験年数→年代は保守的マッピング（経験≠年齢を明示）。
   renderAgeRange(mid);
@@ -1472,11 +1914,14 @@ function render(){
   $('sr-summary').textContent =
     `想定年収 中央${fmt(mid)}万円。最も相性が高いのは${top.name}（想定 中央${fmt(top.cmid)}万円）。${nextMoveText}。`;
 
-  // ===== Batch5：新機能の描画（各 setter は未入力時に自分で非表示にする＝既存表示を壊さない） =====
-  renderCurrentDiff(mid);                 // 1. 現年収比の差分
+  // ===== Batch5 / Wave2-3：新機能の描画（各 setter は未入力時に自分で非表示にする＝既存表示を壊さない） =====
+  // estimatePercentiles() は純関数。Wave2 の市場ポジション・§8 内訳・Wave3 カーブが共通利用する。
+  const est=estimatePercentiles();
+  renderCurrentDiff(est);                 // 1. 現年収差分（Wave2：市場ポジション＋実測昇給の2系統）
   renderTargetBack(base, prem, premRaw);  // 6. 目標年収の逆算
   renderActionMoves();                    // 4. 活動の打ち手
-  renderCurve(prem);                      // 5. キャリア年収カーブ
+  renderCurve(est);                       // 5. キャリア年収カーブ（Wave3：percentile p50/p75）
+  renderCalcBreakdown(est);               // 8. 計算内訳の完全開示
   // 2. 求人検索リンクのサンプル開示（職種＋スキル＋年収条件が URL に載ることを明示）
   const qs=$('jobquery-sample'); if(qs) qs.textContent=jobQuery(Math.round(lo/10)*10);
 

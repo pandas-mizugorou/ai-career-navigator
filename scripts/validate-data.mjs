@@ -175,6 +175,13 @@ try {
   for (const [k, v] of Object.entries(D.model?.roleMul || {})) if (!inRange(v, ROLEMUL)) err(`(e) model.roleMul.${k} 域外(${ROLEMUL.join("〜")}): ${v}`);
   for (const [k, v] of Object.entries(D.model?.skillPrem || {})) if (!inRange(v, PREM)) err(`(e) model.skillPrem.${k} 域外(${PREM.join("〜")}): ${v}`);
   if (D.model && !inRange(D.model.premCap, CAP)) err(`(e) model.premCap 域外(${CAP.join("〜")}): ${D.model.premCap}`);
+  // (g2) 勤務地補正 locationMul（任意セクション＝無ければ skip）。各倍率は現実域 0.8〜1.25 に収める（過大/過小評価防止）。
+  const LOCMUL = [0.8, 1.25];
+  if (D.model && D.model.locationMul) {
+    const lm = D.model.locationMul;
+    if (typeof lm !== "object" || Array.isArray(lm)) err(`(g2) model.locationMul はオブジェクトである必要があります: ${JSON.stringify(lm)}`);
+    else for (const [k, v] of Object.entries(lm)) if (!inRange(v, LOCMUL)) err(`(g2) model.locationMul.${k} 域外(${LOCMUL.join("〜")}): ${v}`);
+  }
 
   // (e2) model.expCurve（経験→中央値の点列）の健全性：
   //   各点が [数値,数値] / 中央値が現実域(SAL) / 年が単調増加（baseByExp の線形補間が破綻しないため）。
@@ -201,6 +208,55 @@ try {
   const expect = EXPECT_DATE || todayJST();
   if (D.meta?.last_updated !== expect)
     err(`(f) 鮮度: meta.last_updated が当日(JST=${expect})と一致しません: "${D.meta?.last_updated}"（再調査が反映されていない可能性）`);
+
+  // (g2) 年齢アンカー二層 / 上乗せ / 昇給 / 分散の健全性（正確性改修 2026-06。いずれも任意セクション＝無ければ skip）
+  for (const key of ["ageAnchor", "ageAnchorNational"]) {
+    const A = D[key];
+    if (!A) continue;
+    if (A.srcId && !sourceIds.has(A.srcId)) err(`(g2) ${key}.srcId "${A.srcId}" が sources に存在しません`);
+    if (!Array.isArray(A.points) || A.points.length < 2) { err(`(g2) ${key}.points は2点以上の配列が必要`); continue; }
+    let prevAge = -Infinity;
+    A.points.forEach((p, i) => {
+      if (!isNum(p.age)) err(`(g2) ${key}.points[${i}].age が数値でない`);
+      else { if (p.age <= prevAge) err(`(g2) ${key}.points[${i}].age が昇順でない（前=${prevAge}）`); prevAge = p.age; }
+      if (!inRange(p.p50, SAL)) err(`(g2) ${key}.points[${i}].p50 ${p.p50} が現実域(${SAL.join("〜")}万)外`);
+      const q = [p.p25, p.p50, p.p75, p.p90].filter(v => isNum(v));   // 存在する percentile のみ順序検証
+      for (let j = 1; j < q.length; j++) if (q[j] < q[j-1]) err(`(g2) ${key}.points[${i}] の percentile が p25≤p50≤p75≤p90 でない: ${JSON.stringify(q)}`);
+    });
+  }
+  if (D.spread) {
+    if (D.spread.tier !== "tool") warn(`(g2) spread.tier は "tool" が想定（現: ${D.spread.tier}）`);
+    const r = D.spread.ratio || {};
+    if (!(isNum(r.p25) && isNum(r.p75) && isNum(r.p90) && r.p25 < 1 && 1 < r.p75 && r.p75 < r.p90))
+      err(`(g2) spread.ratio は p25<1<p75<p90 を満たす必要: ${JSON.stringify(r)}`);
+  }
+  if (D.aiPremium) {
+    if (D.aiPremium.srcId && !sourceIds.has(D.aiPremium.srcId)) err(`(g2) aiPremium.srcId が sources に存在しません`);
+    if (!inRange(D.aiPremium.cap, [1.0, 1.4])) err(`(g2) aiPremium.cap ${D.aiPremium.cap} が [1.0,1.4] 外`);
+    // byAgeBand は配列であること（index.html aiPremiumBaseMul が forEach で代表年齢の点に変換する前提）。
+    if (!Array.isArray(D.aiPremium.byAgeBand)) {
+      err(`(g2) aiPremium.byAgeBand は配列である必要があります: ${JSON.stringify(D.aiPremium.byAgeBand)}`);
+    } else {
+      D.aiPremium.byAgeBand.forEach((b, i) => {
+        if (!(isNum(b.mul) && b.mul >= 1.0 && b.mul <= D.aiPremium.cap))
+          err(`(g2) aiPremium.byAgeBand[${i}].mul ${b.mul} が [1.0, cap=${D.aiPremium.cap}] 外（過大評価防止）`);
+      });
+      // (g2) band キーの存在検証：#3 で byAgeBand を「年代の代表年齢の点」とみなし age で線形補間する構造へ変更したため、
+      //   index.html aiPremiumBaseMul は band キー("20代"/"30代"/"40代")で代表年齢を引く。月次更新でこのキーが改名・欠落すると、
+      //   該当点が点列から落ち、無言で aiMul=1.0（上乗せ消滅）に劣化する。最低限この3キーの存在を必須化して防ぐ。
+      const REQUIRED_BANDS = ["20代", "30代", "40代"];
+      const haveBands = new Set(D.aiPremium.byAgeBand.map((b) => b && b.band));
+      const missingBands = REQUIRED_BANDS.filter((k) => !haveBands.has(k));
+      if (missingBands.length)
+        err(`(g2) aiPremium.byAgeBand に必須の年代キー {${missingBands.join(",")}} がありません（index.html の aiPremiumBaseMul が代表年齢へ変換できず aiMul=1.0 に無言劣化します。キー改名は禁止）`);
+    }
+  }
+  if (D.raiseOnChange) {
+    const ro = D.raiseOnChange;
+    if (ro.srcId && !sourceIds.has(ro.srcId)) err(`(g2) raiseOnChange.srcId が sources に存在しません`);
+    if (!(isNum(ro.upRatio) && ro.upRatio >= 0 && ro.upRatio <= 1)) err(`(g2) raiseOnChange.upRatio ${ro.upRatio} が [0,1] 外`);
+    if (ro.avgRaiseIfUp != null && !(isNum(ro.avgRaiseIfUp) && ro.avgRaiseIfUp >= 0)) err(`(g2) raiseOnChange.avgRaiseIfUp が非負数でない`);
+  }
 
   // ===== Tier 2: index.html 相対整合（UI 即死防止の本丸） =====
   let htmlSrc = null;
