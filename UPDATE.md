@@ -45,6 +45,40 @@
 
 ---
 
+## データ層の二層構造と更新ルール
+
+`data.js` は **更新頻度と人手関与の違いで 2 層** に分かれる。月次自動更新が触れてよい範囲を厳密に限定し、推定の土台（アンカー・分散・補正係数・計算式）が毎月ブレて信頼性を損なうのを防ぐ。
+
+### 年次同期（有人・原則 年1回。official 発表に合わせる）
+次は **官公庁の年次統計が発表された時だけ、人間が** 同期する。**月次の自動更新では絶対に触らない**：
+
+- `ageAnchor`（厚労省 賃金構造基本統計・ソフトウェア作成者の年齢別実測 p50）
+- `ageAnchorNational`（国税庁 民間給与実態統計・年齢階級別平均）
+- `spread`（年齢別分位 p25/p75/p90 の推定比。実測が公表されたら置換）
+- `model.locationMul`（勤務地補正。全国平均=1.0 基準の地域別比）
+- `model{}` 全体（`expCurve`/`roleMul`/`skillPrem`/`premCap`/`groundingNote` 等＝本ツール推定の計算式）
+
+> 発表時期の目安：**国税庁 民間給与実態統計＝例年9月／厚労省 賃金構造基本統計＝例年3月**。これらの official source が更新されたタイミングで、対応するアンカー・係数を有人セッションで同期する。
+
+### 月次自動更新が触れてよい範囲（ホワイトリスト）
+`.github/workflows/monthly-update.yml` の自動更新が書き換えてよいのは **次だけ**：
+
+- `benchmarks`（職種別平均 `avg`・`note`）
+- `companies[].range`（企業タイプ別の市場レンジ文字列）
+- `hotSkills`（需要スキルの入れ替え）
+- `aiPremium.byAgeBand`（**値（`mul`）のみ**。`band` キー集合・構造は変えない）
+- `raiseOnChange`（**値のみ**。`upRatio`/`avgRaiseIfUp` 等の数値更新）
+- `sources` の `date`・`url`（時点更新・URL 差し替え）と **新しい agency ソースの追加**
+
+**変更禁止（自動更新では触らない）**：`ageAnchor` ／ `spread` ／ `model.locationMul` ／ `model{}`（計算式）／ **既存キー集合（スキル・職種・勤務地・tier のキー）** ／ **新しいセクションや構造の追加**。これらは UI（`index.html`）と一体で設計されており、片側だけ変えると壊れる。構造を増減したい場合は「調査内容や項目を変えたいとき」の手順どおり **有人で index.html と一緒に** 変更する。
+
+### 「盛らない」原則は両層に等しく適用
+- **出典必須**：実在値には必ず `srcId`。出典のない数字を入れない（両層）。
+- **cap を上げない**：`premCap`・`aiPremium.cap`・`locationMul` の上限域（0.8〜1.25）を、見栄えのために引き上げない。
+- **不明は不明**：分位・中央値など非公表のものは推定と明示する（`spread`／`raiseOnChange.medianRaise=null` 等）。盛って実測に見せない。
+
+---
+
 ## 自動更新（月次・GitHub Actions）
 
 このランブックは **月 1 回 自動でも実行される**。`.github/workflows/monthly-update.yml` が Claude Code（Opus）を起動し、上記の手順に従って WebSearch 再調査 → `data.js` を書き換える。
