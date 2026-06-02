@@ -358,15 +358,25 @@
   .disc{background:var(--panel);border:1px dashed var(--line);border-radius:12px;padding:12px 16px;font-size:11.5px;color:#8b96bd;margin-top:16px}
   #err{display:none;background:rgba(240,104,104,.12);border:1px solid var(--bad);color:#ffadad;padding:14px;border-radius:12px;margin-top:16px;font-size:13px}
 
-  /* ===== Batch5：現年収比の差分行 ===== */
+  /* ===== Batch5→Wave2：現年収の2系統表示（市場ポジション／実測昇給見込み） ===== */
   /* プラスは accent2（緑）、マイナスは中立（赤は使わない＝マイナスは「悪」ではないため）。 */
   .currentdiff{font-size:12.5px;color:#cdd7f5;background:rgba(91,140,255,.10);
-    border:1px solid var(--line);border-radius:9px;padding:8px 12px;margin-top:12px;line-height:1.55}
+    border:1px solid var(--line);border-radius:9px;padding:10px 12px;margin-top:12px;line-height:1.55}
   .currentdiff .cd-amt{font-weight:800}
   .currentdiff.up .cd-amt{color:var(--accent2)}
   .currentdiff.down .cd-amt{color:#bcd0ff}   /* マイナスは中立色（青寄り） */
   .currentdiff .cd-note{display:block;color:#9aa6c8;font-size:11.5px;margin-top:3px}
   .currentdiff b{color:#dbe6ff}
+  /* Wave2：2系統を縦に積む。各系統は見出し（バッジ付き）＋本文。 */
+  .currentdiff .cd-sys{padding:7px 0}
+  .currentdiff .cd-sys + .cd-sys{border-top:1px solid rgba(39,49,79,.7);margin-top:2px}
+  .currentdiff .cd-sys:first-child{padding-top:2px}
+  .currentdiff .cd-head{display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-weight:800;color:#dbe6ff;font-size:12px;margin-bottom:3px}
+  .currentdiff .cd-pos{font-weight:800}
+  .currentdiff .cd-pos.hi{color:var(--accent2)}
+  .currentdiff .cd-pos.lo{color:#bcd0ff}
+  .currentdiff .cd-pos.mid{color:#bcd0ff}
+  .currentdiff .cd-foot{display:block;color:#9aa6c8;font-size:11px;margin-top:6px;line-height:1.5}
 
   /* ===== Batch5：目標年収の逆算ボックス ===== */
   .targetbox{font-size:12.5px;color:#cdd7f5;border-radius:10px;padding:10px 13px;margin-top:12px;line-height:1.6}
@@ -424,6 +434,39 @@
   .curvelegend .cl-swatch{width:22px;height:0;border-top:3px solid var(--accent2);flex:0 0 auto}
   .curvelegend .cl-swatch.max{border-top:3px dashed var(--accent)}
   .curvelegend b{color:#dbe6ff}
+
+  /* ===== §8：計算内訳の完全開示（details 折りたたみ） =====
+     p50 がどう積み上がったかを「年齢アンカー ×補正 ×… = 中央値」の表で開示。
+     各行に tier バッジを付け、推定（tool/agency）と実測（official）を区別する。 */
+  details.calcbreak{margin-top:12px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:2px 12px}
+  details.calcbreak summary{cursor:pointer;font-size:12px;font-weight:800;color:#dbe6ff;padding:9px 0;list-style:none;display:flex;align-items:center;gap:7px}
+  details.calcbreak summary::-webkit-details-marker{display:none}
+  details.calcbreak summary::before{content:"▸";color:var(--accent);font-weight:900;transition:transform .15s}
+  details.calcbreak[open] summary::before{transform:rotate(90deg)}
+  @media(prefers-reduced-motion:reduce){ details.calcbreak summary::before{transition:none} }
+  .cb-body{padding:4px 0 12px}
+  .cb-table{width:100%;border-collapse:collapse;font-size:12px}
+  .cb-table td{border:0;border-bottom:1px solid rgba(39,49,79,.6);padding:7px 4px;vertical-align:top;text-align:left}
+  .cb-table tr:last-child td{border-bottom:0}
+  /* 行：演算子＋ラベル ／ 係数 ／ tier バッジ。係数列は等幅で読みやすく右寄せ。 */
+  .cb-table .cb-op{color:var(--sub);font-weight:800;width:18px;white-space:nowrap}
+  .cb-table .cb-label{color:#cdd7f5}
+  .cb-table .cb-label b{color:#dbe6ff;font-weight:700}
+  .cb-table .cb-label .cb-sub{display:block;color:#8b96bd;font-size:10.5px;margin-top:1px}
+  .cb-table .cb-fac{color:#dbe6ff;font-weight:800;white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums}
+  .cb-table .cb-badge{text-align:right;white-space:nowrap;width:1%}
+  .cb-table .cb-na{color:#8b96bd;font-weight:700}
+  /* 合計行（= 中央値）を強調 */
+  .cb-table tr.cb-total td{border-top:1.5px solid var(--line);padding-top:9px}
+  .cb-table tr.cb-total .cb-label b{color:#fff;font-size:13px}
+  .cb-table tr.cb-total .cb-fac{color:var(--accent2);font-size:13.5px}
+  .cb-cav{font-size:11px;color:#9aa6c8;margin-top:9px;line-height:1.55}
+  .cb-cav b{color:#cdd7f5}
+  @media(max-width:640px){
+    /* 縦カード化はせず、内訳は密な表のまま（左ラベル・右係数）。係数が折り返さないよう最小幅確保。 */
+    .cb-table .cb-fac{min-width:52px}
+    .cb-table .cb-badge{display:block;text-align:left;padding-top:0}
+  }
 
   /* PWA 更新トースト（新キャッシュ準備完了 → タップで再読込）。中立色・赤は使わない。 */
   .pwa-toast{position:fixed;left:50%;transform:translateX(-50%);z-index:300;
@@ -486,6 +529,13 @@
     .pill{border:1px solid #000;color:#000 !important;background:#fff !important}
     .src-badge{border:1px solid #888;color:#000 !important;background:#fff !important}
     .tmark{color:#000 !important}
+    /* §8 計算内訳も強制展開し、紙面に「なぜこの額か」を必ず残す（検証可能性の担保）。 */
+    details.calcbreak{display:block !important;background:#fff !important;border:1px solid #000 !important}
+    details.calcbreak>*{display:revert !important}
+    details.calcbreak summary{list-style:none;color:#000 !important}
+    details.calcbreak summary::before,details.calcbreak summary::-webkit-details-marker{display:none}
+    .cb-table td,.cb-table .cb-label,.cb-table .cb-label b,.cb-table .cb-fac{color:#000 !important;border-color:#888 !important}
+    .cb-table .cb-op,.cb-table .cb-na,.cb-table .cb-label .cb-sub,.cb-cav{color:#222 !important}
     /* trust パネルは details[open] 相当に強制展開し、本文を必ず印字（details.trust[open] と同等の display:block）。 */
     details.trust{display:block !important;background:#fff !important;border:1px solid #000 !important}
     details.trust>*{display:revert !important}
@@ -616,6 +666,12 @@
         <!-- Wave1：不確実性の開示（分位が推定／年齢未入力時の保守推定）。該当時のみ各1行を表示。 -->
         <div id="uncertainty" style="margin-top:8px"></div>
         <div class="agerange" id="agerange"></div>
+        <!-- §8：計算内訳の完全開示。p50 が「年齢アンカー × 各補正」でどう積み上がったかを一段ずつ開示し、
+             ユーザーが「なぜこの額か」を検証できるようにする（誠実さの極致）。各行に該当 tier バッジ。 -->
+        <details class="calcbreak" id="calcbreak">
+          <summary>この金額の内訳（計算を一段ずつ開示）</summary>
+          <div class="cb-body" id="calcbreak-body"></div>
+        </details>
         <div class="hint" id="gapline" style="margin-top:10px"></div>
         <div class="hint" id="benchline" style="margin-top:6px"></div>
         <div class="actions">
@@ -665,7 +721,7 @@
       <!-- Batch5-5：キャリア年収カーブ外挿（SVG・依存ゼロ） -->
       <div class="card">
         <h2>この先の年収カーブ（試算） <span class="src-badge" id="badge-curve"></span></h2>
-        <div class="hint" style="margin-bottom:8px">いまの経験 <b id="curve-from" style="color:#dbe6ff">—</b> 年を起点に、<b style="color:#dbe6ff">今後7年</b>の想定中央値を外挿した<b>本ツール推定</b>です（実測の昇給予測ではありません）。</div>
+        <div class="hint" style="margin-bottom:8px">いまの <b id="curve-from" style="color:#dbe6ff">—</b> を起点に、<b style="color:#dbe6ff">今後7年</b>の <b style="color:#dbe6ff">中央(p50)</b> と <b style="color:#dbe6ff">上位(p75)</b> を、年齢別の実測中央値を主軸に外挿した<b>本ツール推定</b>です（実測の昇給予測ではありません）。40代後半〜50代前半は実測上いったん下降します。</div>
         <div id="curve"></div>
         <div class="curvelegend" id="curvelegend"></div>
       </div>
@@ -1116,6 +1172,10 @@ function boot(){
 
 // 基準年収カーブは data.js の model.expCurve（[年,中央値] の点列）を単一ソースにする。
 // 点間を線形補間するので端点で連続＝スライダーで階段状に跳ねない。範囲外はクランプ。
+// 【Wave1 以降の位置づけ】年齢アンカー(ageAnchor)導入後、年収推定の主軸は estimatePercentiles()＝
+//   anchorAt(age) に移行した。baseByExp / expCurve は年齢が効く現行ロジックでは実質フォールバック/補助で、
+//   現在は主に目標逆算 renderTargetBack の経験+N年シミュレーションでのみ使用される（age が無い場面の補助）。
+//   ※ロジックは変更しない。test-logic の expCurve 連続性テスト(b)は引き続き維持する。
 function baseByExp(y){
   const pts = D.model.expCurve;
   const lo = pts[0], hi = pts[pts.length-1];
@@ -1285,24 +1345,53 @@ function renderSkillSum(prem,premRaw,capped){
       +`<span style="color:#8b96bd">（上限+${capPct}%まで余地あり・本ツール推定）</span>`;
   }
 }
-/* ===== Batch5-1：現年収比の差分行 =====
-   現年収（レンジ中央値）と本ツール想定中央値の差を提示。
-   未入力なら何も出さない（盛らない）。マイナスは中立色＋「現職が市場より高め」と誠実に。 */
-function renderCurrentDiff(mid){
+/* ===== Batch5-1 → Wave2：現年収の2系統表示 =====
+   現年収 cm 入力時に「市場ポジション」と「転職時の昇給見込み（実測）」を併記する。
+   - 市場ポジション：あなたの市場中央値(p50)＝実在平均×本ツール推定式。土台は年齢アンカー(official)。
+     cm との大小を「現職は市場中央より高め/低め」と正直に出す。
+   - 昇給見込み：D.raiseOnChange の実測（昇給率58%・昇給者平均+72.7万）を agency バッジで。
+     パーセント帯は cm×+5%〜+20%（中央+12%相当）を目安提示。中央値は非公表(null)と明記。
+   推定（p50）を実測に見せない／実測（昇給率）を推定に見せないよう tier を厳密に付与する。
+   未入力なら何も出さない（盛らない）。引数 e = estimatePercentiles()。 */
+function renderCurrentDiff(e){
   const el=$('currentdiff'); if(!el) return;
   const cm=currentMid();
-  if(!cm){ el.style.display='none'; el.innerHTML=''; return; }
-  const d=Math.round(mid-cm), pct=Math.round((mid-cm)/cm*100);
-  el.classList.remove('up','down');
-  if(d>=0){
-    el.classList.add('up');
-    el.innerHTML=`現年収比 <span class="cd-amt">+${fmt(d)}万（+${pct}%）</span>`
-      +`<span class="cd-note">＝本ツール想定式（実在平均×推定）との比較。実オファーは交渉・評価で変動します。</span>`;
-  } else {
-    el.classList.add('down');
-    el.innerHTML=`現年収比 <span class="cd-amt">${fmt(d)}万（${pct}%）</span>`
-      +`<span class="cd-note">この職種タイプでは現職が市場より高め。維持か、別の軸（裁量・成長・働き方）で評価を。本ツール想定式との比較です。</span>`;
+  if(!cm){ el.style.display='none'; el.innerHTML=''; el.classList.remove('up','down'); return; }
+  const p50=Math.round(e.p50);
+  // 系統1：市場ポジション（official 土台バッジ＝年齢アンカー由来）。
+  const officialBadge=(D.ageAnchor&&D.ageAnchor.srcId&&D.sources[D.ageAnchor.srcId])
+    ? srcBadge(D.ageAnchor.srcId) : tierBadgeInline('official');
+  const d=p50-cm, pct=Math.round((p50-cm)/cm*100);
+  let posTxt, posCls;
+  if(d>0){ posTxt=`現職は市場中央より低め（+${fmt(d)}万・+${pct}%の余地）`; posCls='hi'; }
+  else if(d<0){ posTxt=`現職は市場中央より高め（${fmt(d)}万・${pct}%）`; posCls='lo'; }
+  else { posTxt='現職は市場中央とほぼ同水準'; posCls='mid'; }
+  el.classList.remove('up','down'); el.classList.add(d>=0?'up':'down');
+
+  // 系統2：転職時の昇給見込み（実測）。raiseOnChange が無ければこの系統は出さない（盛らない）。
+  const ro=D.raiseOnChange;
+  let sys2='';
+  if(ro){
+    const upPct=ro.upRatio!=null?Math.round(ro.upRatio*100):null;
+    const roBadge=(ro.srcId&&D.sources[ro.srcId])?srcBadge(ro.srcId):tierBadgeInline('agency');
+    // パーセント帯（目安）は cm に対して +5%〜+20%（中央+12%相当）を当てる。
+    const loMan=Math.round(cm*1.05), midMan=Math.round(cm*1.12), hiMan=Math.round(cm*1.20);
+    const medTxt = ro.medianRaise==null ? '中央値は非公表（不明）' : `中央 +${fmt(ro.medianRaise)}万`;
+    const avgUpTxt = ro.avgRaiseIfUp!=null ? `昇給した人の平均は <b>+${fmt(ro.avgRaiseIfUp)}万</b>` : '';
+    sys2=`<div class="cd-sys"><div class="cd-head">転職時の昇給見込み（実測） ${roBadge}</div>`
+      +(upPct!=null?`昇給する人は約 <b>${upPct}%</b>。`:'')
+      +`昇給した場合 現年収 <b>${fmt(cm)}万</b> × <span class="cd-amt">+5%〜+20%</span>`
+      +` ＝ <b>${fmt(loMan)}〜${fmt(hiMan)}万</b>（中央 +12%相当 ≒ ${fmt(midMan)}万）。`
+      +`<span class="cd-foot">${avgUpTxt}${avgUpTxt?'。':''}${medTxt}。${esc(ro.note||'')}</span></div>`;
   }
+
+  el.innerHTML=
+    `<div class="cd-sys"><div class="cd-head">市場ポジション ${officialBadge}</div>`
+    +`あなたの市場中央値(p50) <span class="cd-amt">${fmt(p50)}万</span>`
+    +` ／ 現年収 <b>${fmt(cm)}万</b> → <span class="cd-pos ${posCls}">${posTxt}</span>`
+    +`<span class="cd-foot">p50＝実在の市場平均×本ツール推定式（土台は年齢別の公式統計）。実測の確定額ではありません。</span></div>`
+    +sys2
+    +`<span class="cd-note">※「希望年収」と「実測の昇給」は別物です。昇給見込みは <b>現職給与が交渉の基準</b>になります（盛らず実測レンジで提示）。</span>`;
   el.style.display='';
 }
 
@@ -1316,33 +1405,41 @@ function renderActionMoves(){
     +`<div><b>${esc(m.t)}</b><span class="am-why">なぜ効く：${esc(m.why)}</span></div></div>`).join('');
 }
 
-/* ===== Batch5-5：キャリア年収カーブ外挿（依存ゼロの SVG 折れ線） =====
-   exp..exp+7 を baseByExp(y)*roleMul*(1+prem) でループ計算。
-   2本：現スキルのまま（実線）／最大伸びしろ習得（破線・premCap まで貪欲に積む）。
-   baseByExp は連続なので階段は出ない。 */
-function maxReachablePrem(){
-  // 現在の選択に未取得スキルを skillPrem 降順で premCap まで積んだ実効加点。
-  let raw=0; sel.skills.forEach(k=>raw+=D.model.skillPrem[k]||0);
-  const missing=Object.keys(D.model.skillPrem).filter(k=>!sel.skills.has(k))
-    .sort((a,b)=>(D.model.skillPrem[b]||0)-(D.model.skillPrem[a]||0));
-  for(const k of missing){ if(raw>=D.model.premCap) break; raw+=D.model.skillPrem[k]||0; }
-  return Math.min(raw, D.model.premCap);
+/* ===== Batch5-5 → Wave3：キャリア年収カーブ（percentile ベース・依存ゼロの SVG 折れ線） =====
+   起点 age = sel.age || ageFromExp(sel.exp)。i=0..7 で age+i の percentile を再計算する。
+   主軸は anchorAt(age+i)（年齢別の実測 p50）。同じ役割・スキルを保ち、経験は加齢に合わせて
+   sel.exp+i と進める（expF が一定に保たれ、加齢効果＝年齢アンカーの変化として素直に出る）。
+   描くのは p50（中央）と p75（上位）の2本のみ。p90 外挿は不確実なので出さない。
+   年齢アンカーが実測下降する区間（40代後半→50代前半）もそのまま誠実に描く。
+   p75 は「上限の目安」（spread.ratio 由来の上位分位）で、過大評価を避け貪欲な最大スキル積みはしない。 */
+function percentilesAtAge(age, exp){
+  // estimatePercentiles と同一の合成順（anchor × expF × roleF × skillF × aiMul）を、任意 age/exp で再現。
+  const A=anchorAt(age);
+  const stdExp=Math.max(0, age-22);
+  const expF=clamp(1 + 0.015*(exp - stdExp), 0.88, 1.15);
+  const roleF=D.model.roleMul[sel.role]||1;
+  let premRaw=0; sel.skills.forEach(k=>premRaw+=D.model.skillPrem[k]||0);
+  const skillF=1+Math.min(premRaw,D.model.premCap);
+  const ai=aiPremiumFactor(age, sel.role, sel.skills);
+  const f=expF*roleF*skillF*ai.mul;
+  return { p50:A.p50*f, p75:A.p75*f, estimatedSpread:A.estimatedSpread };
 }
-function renderCurve(prem){
+function renderCurve(e){
   const host=$('curve'); if(!host) return;
-  if($('curve-from')) $('curve-from').textContent=sel.exp;
-  const rm=D.model.roleMul[sel.role]||1;
-  const premMax=maxReachablePrem();
-  const years=[]; for(let i=0;i<=7;i++) years.push(Math.min(20, sel.exp+i));
-  // 同じ年が連続（exp が高くクランプ）しても折れ線が潰れないよう、x はインデックス基準で等間隔に。
-  const now = years.map(y=>baseByExp(y)*rm*(1+prem));
-  const max = years.map(y=>baseByExp(y)*rm*(1+premMax));
-  const allVals=now.concat(max);
+  const startAge = Number.isFinite(sel.age) ? sel.age : ageFromExp(sel.exp);
+  // 起点ラベル（hint 内 #curve-from）は年齢起点に。年齢未入力時は「経験から補完した年齢」と明示。
+  if($('curve-from')) $('curve-from').textContent = Number.isFinite(sel.age) ? `${startAge}歳` : `約${startAge}歳（経験から補完）`;
+  const ages=[]; for(let i=0;i<=7;i++) ages.push(Math.min(62, startAge+i));   // 年齢アンカーの上端 62 でクランプ
+  // 経験も加齢に合わせて進める（expF を一定に保ち、加齢効果を年齢アンカーの変化として表す）。0..40 でクランプ。
+  const p50s=ages.map((a,i)=>percentilesAtAge(a, Math.min(40, sel.exp+i)).p50);
+  const p75s=ages.map((a,i)=>percentilesAtAge(a, Math.min(40, sel.exp+i)).p75);
+  const anySpreadEst=ages.some((a,i)=>percentilesAtAge(a, Math.min(40, sel.exp+i)).estimatedSpread);
+  const allVals=p50s.concat(p75s);
   const vmin=Math.min(...allVals), vmax=Math.max(...allVals);
   // 描画領域
   const W=520, H=210, padL=46, padR=14, padT=14, padB=30;
   const innerW=W-padL-padR, innerH=H-padT-padB;
-  const n=years.length;
+  const n=ages.length;
   const x=i=> padL + (n<=1?0:innerW*i/(n-1));
   const lo=Math.floor(vmin/50)*50, hi=Math.ceil(vmax/50)*50;
   const span=Math.max(1,hi-lo);
@@ -1355,38 +1452,34 @@ function renderCurve(prem){
     grid+=`<line class="curve-grid" x1="${padL}" y1="${yy.toFixed(1)}" x2="${(W-padR).toFixed(1)}" y2="${yy.toFixed(1)}"/>`;
     grid+=`<text class="curve-txt" x="${padL-6}" y="${(yy+3).toFixed(1)}" text-anchor="end">${Math.round(v)}</text>`;
   }
-  // X 軸ラベル（経験年・端点と中間のみ間引き表示）
+  // X 軸ラベル（年齢・端点と中間のみ間引き表示）
   let xlab='';
-  years.forEach((yr,i)=>{
+  ages.forEach((a,i)=>{
     if(i===0||i===n-1||i===Math.floor((n-1)/2)){
-      xlab+=`<text class="curve-txt" x="${x(i).toFixed(1)}" y="${(H-padB+16)}" text-anchor="middle">${yr}年</text>`;
+      xlab+=`<text class="curve-txt" x="${x(i).toFixed(1)}" y="${(H-padB+16)}" text-anchor="middle">${a}歳</text>`;
     }
   });
-  // 端点の値ラベル（最大伸びしろ線の終点・現スキル線の終点）
-  const endNow=now[n-1], endMax=max[n-1];
-  const dots=arr=>arr.map((v,i)=>(i===0||i===n-1)?`<circle class="curve-dot${arr===max?' max':''}" cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3.2"/>`:'').join('');
-  const svg=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="経験${sel.exp}年から7年先までの想定年収カーブ。実線は現スキルのまま、破線は最大伸びしろを習得した場合。いずれも本ツール推定の外挿。">`
+  // 端点の値ラベル（p75 上位線の終点・p50 中央線の終点）
+  const endP50=p50s[n-1], endP75=p75s[n-1];
+  const dots=arr=>arr.map((v,i)=>(i===0||i===n-1)?`<circle class="curve-dot${arr===p75s?' max':''}" cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3.2"/>`:'').join('');
+  const svg=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${startAge}歳から7年先（${ages[n-1]}歳）までの想定年収カーブ。実線は中央(p50)、破線は上位(p75)。いずれも年齢別の実測中央値を主軸にした本ツール推定の外挿。40代後半から50代前半は実測上いったん下降します。">`
     + grid
     + `<line class="curve-axis" x1="${padL}" y1="${padT}" x2="${padL}" y2="${H-padB}"/>`
     + `<line class="curve-axis" x1="${padL}" y1="${H-padB}" x2="${W-padR}" y2="${H-padB}"/>`
-    + (premMax>prem+1e-9?`<polyline class="curve-line max" points="${pts(max)}"/>`:'')
-    + `<polyline class="curve-line" points="${pts(now)}"/>`
-    + (premMax>prem+1e-9?dots(max):'')
-    + dots(now)
-    + `<text class="curve-txt val" x="${(x(n-1)-2).toFixed(1)}" y="${(y(endNow)-7).toFixed(1)}" text-anchor="end">${fmt(endNow)}万</text>`
-    + (premMax>prem+1e-9?`<text class="curve-txt val" x="${(x(n-1)-2).toFixed(1)}" y="${(y(endMax)-7).toFixed(1)}" text-anchor="end" style="fill:var(--accent)">${fmt(endMax)}万</text>`:'')
+    + xlab
+    + `<polyline class="curve-line max" points="${pts(p75s)}"/>`
+    + `<polyline class="curve-line" points="${pts(p50s)}"/>`
+    + dots(p75s)
+    + dots(p50s)
+    + `<text class="curve-txt val" x="${(x(n-1)-2).toFixed(1)}" y="${(y(endP50)+(endP75>=endP50?14:-7)).toFixed(1)}" text-anchor="end">${fmt(endP50)}万</text>`
+    + `<text class="curve-txt val" x="${(x(n-1)-2).toFixed(1)}" y="${(y(endP75)-7).toFixed(1)}" text-anchor="end" style="fill:var(--accent)">${fmt(endP75)}万</text>`
     + `</svg>`;
   host.innerHTML=svg;
-  // 凡例
+  // 凡例（中央 p50 ／ 上位 p75）。p75 は上限の目安である旨を明示。
   const lg=$('curvelegend'); if(lg){
-    const capPct=Math.round(D.model.premCap*100);
-    let html=`<span class="cl-item"><span class="cl-swatch"></span>現スキルのまま（${sel.exp}→${years[n-1]}年で <b>${fmt(now[n-1])}万</b>）</span>`;
-    if(premMax>prem+1e-9){
-      html+=`<span class="cl-item"><span class="cl-swatch max"></span>最大伸びしろ習得（加点上限+${capPct}%到達時 <b>${fmt(max[n-1])}万</b>）</span>`;
-    } else {
-      html+=`<span class="cl-item" style="color:#9aa6c8">スキル加点は既に上限(+${capPct}%)。破線は現スキル線と一致するため省略。</span>`;
-    }
-    lg.innerHTML=html;
+    lg.innerHTML=`<span class="cl-item"><span class="cl-swatch"></span>中央(p50)（${startAge}→${ages[n-1]}歳で <b>${fmt(endP50)}万</b>）</span>`
+      +`<span class="cl-item"><span class="cl-swatch max"></span>上位(p75・上限の目安)（同 <b>${fmt(endP75)}万</b>）</span>`
+      +(anySpreadEst?`<span class="cl-item" style="color:#9aa6c8">※上位(p75)は分位が公的統計に無く推定（中央 p50 は実測ベース）</span>`:'');
   }
 }
 
@@ -1461,6 +1554,72 @@ function renderTargetBack(base, prem, premRaw){
   body+=`<span class="tb-cav">※baseByExp / roleMul / companies.mul を使った本ツール推定の逆算。盛らず「届きにくい」と正直に提示します。実オファーは交渉・評価で変動します。</span>`;
   el.innerHTML=body;
   el.style.display='';
+}
+
+/* ===== §8：計算内訳の完全開示 =====
+   estimatePercentiles().parts（expF/roleF/skillF/aiMul/aiApplied）と age/estimatedSpread を使い、
+   p50 が「年齢アンカー × 各補正」でどう積み上がったかを一段ずつ開示する。
+   各行に該当 tier バッジを付け、推定（tool/agency）と実測（official）を視覚的に区別する。
+   p50 = anchorP50 × expF × roleF × skillF × aiMul（estimatePercentiles と同一の合成順）。 */
+function renderCalcBreakdown(e){
+  const el=$('calcbreak-body'); if(!el) return;
+  const {expF,roleF,skillF,aiMul,aiApplied}=e.parts;
+  const anchorP50=anchorAt(e.age).p50;            // 年齢アンカー素値（official 実測の補間）
+  const stdExp=Math.max(0, e.age-22);             // 年齢相当の標準経験年数
+  const prem=e.prem;                              // 実効スキル加点（premCap 内）
+  // 年齢アンカーの出典バッジ（official・mhlw_chingin にリンク）。無ければ tool バッジにフォールバック。
+  const anchorBadge = (D.ageAnchor&&D.ageAnchor.srcId&&D.sources[D.ageAnchor.srcId])
+    ? srcBadge(D.ageAnchor.srcId) : tierBadgeInline('official');
+  const fac=v=>'×'+(v).toFixed(2);                // 係数表示（×1.08 等）
+  // 行ヘルパ：演算子 / ラベル(＋小注) / 係数 / バッジ
+  const row=(op,label,sub,facHtml,badge,extraCls)=>
+    `<tr${extraCls?` class="${extraCls}"`:''}>`
+    +`<td class="cb-op">${op}</td>`
+    +`<td class="cb-label"><b>${label}</b>${sub?`<span class="cb-sub">${sub}</span>`:''}</td>`
+    +`<td class="cb-fac">${facHtml}</td>`
+    +`<td class="cb-badge">${badge}</td></tr>`;
+  const bandLabel=ageToBand(e.age);
+  let rows='';
+  // ① 年齢アンカー（土台・official 実測）
+  rows+=row('', `年齢アンカー（${e.age}歳・ソフトウェア作成者）`,
+    `厚労省 賃金構造の年齢別実測 p50（${esc(bandLabel)}相当を補間）`,
+    `${fmt(anchorP50)}万`, anchorBadge);
+  // ② 経験補正（tool・年齢相当からのズレを副次補正）
+  rows+=row('×', '経験補正',
+    `あなた ${sel.exp}年 / 年齢相当 ${stdExp}年（差分を小さく反映・0.88〜1.15でクランプ）`,
+    fac(expF), tierBadgeInline('tool'));
+  // ③ 職種（tool・roleMul）
+  rows+=row('×', `職種（${esc(roleLabel[sel.role]||sel.role)}）`,
+    `roleMul（職種ごとの市場係数）`,
+    fac(roleF), tierBadgeInline('tool'));
+  // ④ スキル加点（tool・premCap 内の実効加点）
+  rows+=row('×', `スキル加点（+${Math.round(prem*100)}%）`,
+    e.capped?`単純合計+${Math.round(e.premRaw*100)}%は上限+${Math.round(D.model.premCap*100)}%で頭打ち`
+            :`選択スキルの加点合計（上限+${Math.round(D.model.premCap*100)}%）`,
+    fac(skillF), tierBadgeInline('tool'));
+  // ⑤ AI/生成AI上乗せ（agency・対象職種かつ関連スキル時のみ）。非該当は「対象外」。
+  const aiCapPct=Math.round((((D.aiPremium&&D.aiPremium.cap)||1.20)-1)*100);
+  if(aiApplied){
+    rows+=row('×', 'AI/生成AI上乗せ',
+      `ソフトウェア作成者比の上乗せ（対象職種×関連スキル保有率で逓減・上限+${aiCapPct}%）`,
+      fac(aiMul), (D.aiPremium&&D.aiPremium.srcId&&D.sources[D.aiPremium.srcId])?srcBadge(D.aiPremium.srcId):tierBadgeInline('agency'));
+  } else {
+    rows+=row('×', 'AI/生成AI上乗せ',
+      ['ds','mle','genai'].includes(sel.role)?'関連スキル（生成AI/RAG/MLOps）未選択のため対象外':'対象職種（DS/ML/生成AI）でないため対象外',
+      '<span class="cb-na">対象外（×1.00）</span>', tierBadgeInline('agency'));
+  }
+  // = 中央値（p50）
+  rows+=row('=', '中央値（p50）', '', `<span>${fmt(e.p50)}万</span>`, '', 'cb-total');
+
+  // 注記：分位の推定・年齢補完を該当時のみ併記（盛らない）。
+  const cav=[];
+  cav.push('各係数は実在の市場平均（年齢アンカー＝<b>公式統計</b>）に、本ツール推定の補正を掛けたものです。');
+  if(e.estimatedSpread) cav.push('幅（p25/p75/p90）は分位が公的統計に無く、中央値からの<b>推定</b>です（中央値は実測ベース）。');
+  if(!e.ageKnown)       cav.push('年齢は未入力のため<b>経験年数から補完</b>（22+経験年数・控えめにクランプ）。');
+  cav.push('実オファーは面接評価・採用枠・交渉で上下します。');
+
+  el.innerHTML=`<table class="cb-table"><tbody>${rows}</tbody></table>`
+    +`<div class="cb-cav">${cav.map(c=>'※ '+c).join('<br>')}</div>`;
 }
 
 function render(){
@@ -1640,11 +1799,14 @@ function render(){
   $('sr-summary').textContent =
     `想定年収 中央${fmt(mid)}万円。最も相性が高いのは${top.name}（想定 中央${fmt(top.cmid)}万円）。${nextMoveText}。`;
 
-  // ===== Batch5：新機能の描画（各 setter は未入力時に自分で非表示にする＝既存表示を壊さない） =====
-  renderCurrentDiff(mid);                 // 1. 現年収比の差分
+  // ===== Batch5 / Wave2-3：新機能の描画（各 setter は未入力時に自分で非表示にする＝既存表示を壊さない） =====
+  // estimatePercentiles() は純関数。Wave2 の市場ポジション・§8 内訳・Wave3 カーブが共通利用する。
+  const est=estimatePercentiles();
+  renderCurrentDiff(est);                 // 1. 現年収差分（Wave2：市場ポジション＋実測昇給の2系統）
   renderTargetBack(base, prem, premRaw);  // 6. 目標年収の逆算
   renderActionMoves();                    // 4. 活動の打ち手
-  renderCurve(prem);                      // 5. キャリア年収カーブ
+  renderCurve(est);                       // 5. キャリア年収カーブ（Wave3：percentile p50/p75）
+  renderCalcBreakdown(est);               // 8. 計算内訳の完全開示
   // 2. 求人検索リンクのサンプル開示（職種＋スキル＋年収条件が URL に載ることを明示）
   const qs=$('jobquery-sample'); if(qs) qs.textContent=jobQuery(Math.round(lo/10)*10);
 
