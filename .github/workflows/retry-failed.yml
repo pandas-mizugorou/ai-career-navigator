@@ -1,0 +1,36 @@
+name: Retry failed Monthly Update
+
+# 本体 (monthly-update.yml) が failure / cancelled で終わったとき、失敗したジョブだけを
+# 「1 回だけ」自動再実行する自己修復ワークフロー。
+#
+# 動機: 月 1 運用は 1 回コケると最大 1 ヶ月データが古いままになる。GitHub ホストランナーの
+#   一時的なプリエンプション ("runner has received a shutdown signal" / exit 143) や
+#   claude-code-action のネットワーク一時障害を、自動で 1 回リトライして回復させる。
+#
+# 重要な区別: 検証ゲート不合格（＝異常データ）は本体が continue-on-error で **success 終了**
+#   するため、ここでは発火しない。異常データは再実行しても同じなので Issue 経路で人が対応する。
+#   ここが拾うのは「インフラ障害による failure / cancelled」だけ。
+#
+# 注意: workflow_run トリガーはデフォルトブランチ (main) 上の本ファイルでのみ有効。
+
+on:
+  workflow_run:
+    workflows: ["Monthly Data Update"]
+    types: [completed]
+
+permissions:
+  actions: write   # gh run rerun に必要
+
+jobs:
+  rerun:
+    name: Re-run failed jobs once
+    runs-on: ubuntu-latest
+    if: ${{ (github.event.workflow_run.conclusion == 'failure' || github.event.workflow_run.conclusion == 'cancelled') && github.event.workflow_run.run_attempt < 2 }}
+    steps:
+      - name: Re-run only the failed/cancelled jobs of the original run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "Run ${{ github.event.workflow_run.id }} concluded '${{ github.event.workflow_run.conclusion }}' (attempt ${{ github.event.workflow_run.run_attempt }})."
+          echo "Re-running only the failed/cancelled jobs once..."
+          gh run rerun ${{ github.event.workflow_run.id }} --failed -R ${{ github.repository }}
