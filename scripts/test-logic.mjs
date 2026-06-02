@@ -235,11 +235,21 @@ function aiPremiumFactor(age, role, skillsSet) {
   return { mul, applied: mul > 1.0001 };
 }
 
+// ---- index.html locationFactor と同一（未指定/未知キー/未定義は 1.0）----
+//   index.html: locationF = (D.model.locationMul && sel.location) ? (D.model.locationMul[sel.location] ?? 1.0) : 1.0
+function locationFactorOf(location) {
+  const m = (D.model && D.model.locationMul) || null;
+  if (!m || !location) return 1.0;
+  const v = m[location];
+  return (typeof v === "number" && isFinite(v)) ? v : 1.0;
+}
+
 // ---- index.html estimatePercentiles と同一（global sel 依存を引数化した純関数版）----
-//   sel.{age,exp,role,skills} を (age|null, exp, role, skills:Set) で受ける。pref は本体に無関係（personalRange 側）。
+//   sel.{age,exp,role,skills,location} を (age|null, exp, role, skills:Set, location|null) で受ける。pref は本体に無関係（personalRange 側）。
 //   ★ EXP_K は (W1-x) negative test 用のフック。既定 0.015（= index.html の係数）。
+//   ★ §8：locationF を index.html と一致させて f / base の両方に掛ける（移植照合が崩れないように）。
 let EXP_K = 0.015;
-function estimatePercentiles(ageInput, role, skills, exp) {
+function estimatePercentiles(ageInput, role, skills, exp, location = null) {
   const ageKnown = Number.isFinite(ageInput);
   const age = ageKnown ? ageInput : ageFromExp(exp);
   const A = anchorAt(age);
@@ -250,14 +260,15 @@ function estimatePercentiles(ageInput, role, skills, exp) {
   const prem = Math.min(premRaw, D.model.premCap);
   const skillF = 1 + prem;
   const ai = aiPremiumFactor(age, role, skills);
-  const f = expF * roleF * skillF * ai.mul;
-  const base = A.p50 * expF * roleF * ai.mul; // base*(1+prem)=p50 を保つ
+  const locationF = locationFactorOf(location);
+  const f = expF * roleF * skillF * ai.mul * locationF;
+  const base = A.p50 * expF * roleF * ai.mul * locationF; // base*(1+prem)=p50 を保つ
   return {
     p25: A.p25 * f, p50: A.p50 * f, p75: A.p75 * f, p90: A.p90 * f,
     mid: A.p50 * f, lo: A.p25 * f, hi: A.p90 * f,
     prem, premRaw, capped: premRaw > D.model.premCap, base,
     estimatedSpread: A.estimatedSpread, ageKnown, age,
-    parts: { expF, roleF, skillF, aiMul: ai.mul, aiApplied: ai.applied },
+    parts: { expF, roleF, skillF, aiMul: ai.mul, aiApplied: ai.applied, locationF },
   };
 }
 
@@ -439,6 +450,109 @@ const SKILL_PATTERNS = [
           `(W1-7) 逓増性違反: role=${role}, age=${age} で関連スキル ${n - 1}個→${n}個 に増やしたのに aiMul が ${prevMul}→${m} と減少しました`,
         );
         prevMul = m;
+        C();
+      }
+    }
+  }
+}
+
+/* ============================================================
+   §8：勤務地補正 locationF の不変条件テスト（正確性改修 2026-06）
+
+   index.html の locationFactor / estimatePercentiles に追加した locationF が満たすべき不変条件：
+     - locationMul の全 key で 0.8 ≤ mul ≤ 1.25（過大/過小評価防止・validate(g2) と同条件）
+     - 未指定(null)・未知キーでは locationF=1.0（後方互換：補正なし）
+     - locationF を掛けても percentile 単調性 p25≤p50≤p75≤p90 を維持
+     - locationF を掛けても base*(1+prem)=p50 を維持（目標逆算の前提）
+     - location=null と未指定で結果が完全一致（既存 W1 テストの非破壊＝後方互換の保証）
+   data.js に locationMul が無ければ後方互換のみ検証（無ければ skip）。
+   ============================================================ */
+{
+  const LM = (D.model && D.model.locationMul) || null;
+  const LOC_KEYS = LM ? Object.keys(LM) : [];
+  // locationFactorOf の戻り値検証用キー集合（実キー＋未指定＋未知キー）
+  const LOC_CASES = [null, "__unknown__", ...LOC_KEYS];
+
+  // (S8-1) locationMul の全 key で 0.8 ≤ mul ≤ 1.25
+  if (LM) {
+    for (const k of LOC_KEYS) {
+      const v = LM[k];
+      assert.ok(
+        typeof v === "number" && isFinite(v) && v >= 0.8 && v <= 1.25,
+        `(S8-1) locationMul.${k}=${v} が現実域 0.8〜1.25 を外れています（validate(g2) と同条件）`,
+      );
+      C();
+    }
+  }
+
+  // (S8-2) 未指定(null)・未知キーは locationF=1.0（後方互換）
+  assert.equal(locationFactorOf(null), 1.0, `(S8-2) locationFactorOf(null) が 1.0 でありません`);
+  C();
+  assert.equal(locationFactorOf("__unknown__"), 1.0, `(S8-2) locationFactorOf(未知キー) が 1.0 でありません`);
+  C();
+  assert.equal(locationFactorOf(undefined), 1.0, `(S8-2) locationFactorOf(undefined) が 1.0 でありません`);
+  C();
+
+  // (S8-3) 多数の (age, role, skills, location) で p25≤p50≤p75≤p90 を維持
+  for (let age = 22; age <= 62; age += 4) {
+    for (const role of ALL_ROLES) {
+      for (const sk of SKILL_PATTERNS) {
+        for (const loc of LOC_CASES) {
+          const e = estimatePercentiles(age, role, toSet(sk), Math.max(0, age - 22), loc);
+          assert.ok(
+            e.p25 <= e.p50 + 1e-9 && e.p50 <= e.p75 + 1e-9 && e.p75 <= e.p90 + 1e-9,
+            `(S8-3) 勤務地適用で percentile 単調性違反: age=${age}, role=${role}, skills=[${sk.join(",")}], loc=${loc} → p25=${e.p25.toFixed(2)}, p50=${e.p50.toFixed(2)}, p75=${e.p75.toFixed(2)}, p90=${e.p90.toFixed(2)}`,
+          );
+          C();
+        }
+      }
+    }
+  }
+
+  // (S8-4) 勤務地適用後も base*(1+prem)=p50 を維持（誤差±1万）
+  for (let age = 22; age <= 62; age += 4) {
+    for (const role of ALL_ROLES) {
+      for (const sk of SKILL_PATTERNS) {
+        for (const loc of LOC_CASES) {
+          const e = estimatePercentiles(age, role, toSet(sk), Math.max(0, age - 22), loc);
+          const recomposed = e.base * (1 + e.prem);
+          assert.ok(
+            Math.abs(recomposed - e.p50) <= 1,
+            `(S8-4) base*(1+prem)=p50 不変条件違反（勤務地適用）: age=${age}, role=${role}, skills=[${sk.join(",")}], loc=${loc} → base*(1+prem)=${recomposed.toFixed(3)} と p50=${e.p50.toFixed(3)} が ±1万を超えて乖離`,
+          );
+          C();
+        }
+      }
+    }
+  }
+
+  // (S8-5) location=null と「locationF=1.0 のケース」は p50 が一致＝既存 W1 テストの非破壊（後方互換）。
+  //   かつ各実キーは「全係数を locationF 倍しただけ」＝p50_loc / p50_null == locationMul[key]（厳密一致）。
+  for (let age = 27; age <= 57; age += 10) {
+    for (const role of CORE_ROLES) {
+      const skills = toSet(["genai", "agent"]);
+      const exp = Math.max(0, age - 22);
+      const eNull = estimatePercentiles(age, role, skills, exp, null);
+      const eDefault = estimatePercentiles(age, role, skills, exp);   // location 引数省略＝null と同じ
+      assert.ok(
+        Math.abs(eNull.p50 - eDefault.p50) < 1e-9,
+        `(S8-5) 後方互換違反: location=null(${eNull.p50}) と location 省略(${eDefault.p50}) の p50 が一致しません`,
+      );
+      C();
+      for (const k of LOC_KEYS) {
+        const eLoc = estimatePercentiles(age, role, skills, exp, k);
+        const expectedRatio = LM[k];
+        const actualRatio = eLoc.p50 / eNull.p50;
+        assert.ok(
+          Math.abs(actualRatio - expectedRatio) < 1e-9,
+          `(S8-5) 勤務地倍率の伝播違反: loc=${k} で p50比=${actualRatio.toFixed(6)} が locationMul=${expectedRatio} と一致しません（f/base 両方に均一適用されているはず）`,
+        );
+        C();
+        // 同時に parts.locationF も一致
+        assert.ok(
+          Math.abs(eLoc.parts.locationF - expectedRatio) < 1e-9,
+          `(S8-5) parts.locationF 不一致: loc=${k} の parts.locationF=${eLoc.parts.locationF} が locationMul=${expectedRatio} と異なります`,
+        );
         C();
       }
     }

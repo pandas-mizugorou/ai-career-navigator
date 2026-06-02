@@ -36,7 +36,9 @@ window.SALARY_DATA = {
     mhlw_chingin:{ name:"厚労省 賃金構造基本統計調査 2024（ソフトウェア作成者・年齢階級別）", url:"https://www.mhlw.go.jp/toukei/itiran/roudou/chingin/kouzou/z2024/index.html", date:"2024", tier:"official" },
     nta_minkan: { name:"国税庁 民間給与実態統計調査 令和6年分（年齢階級別平均給与・男女計）", url:"https://www.nta.go.jp/publication/statistics/kokuzeicho/minkan2024/", date:"2024", tier:"official" },
     geekly_ai:  { name:"Geekly AIエンジニア年収（年代別・面談来訪データ）", url:"https://www.geekly.co.jp/column/cat-position/ai_engineer_annual_salary/", date:"2026", tier:"agency" },
-    doda_change:{ name:"doda 転職前後の年収変動レポート 2025年11月版", url:"https://www.persol-career.co.jp/newsroom/news/research/2025/20251225_2032/", date:"2025", tier:"agency" }
+    doda_change:{ name:"doda 転職前後の年収変動レポート 2025年11月版", url:"https://www.persol-career.co.jp/newsroom/news/research/2025/20251225_2032/", date:"2025", tier:"agency" },
+    doda_area:  { name:"doda 平均年収ランキング2024（47都道府県・エリア別／集計2023年9月〜2024年8月・約60万人）", url:"https://doda.jp/guide/heikin/area/2024/", date:"2024", tier:"agency" },
+    kyujinbox_se:{ name:"求人ボックス 給料ナビ システムエンジニア（地域別・2024年3月集計）", url:"https://xn--pckua2a7gp15o89zb.com/%E3%82%B7%E3%82%B9%E3%83%86%E3%83%A0%E3%82%A8%E3%83%B3%E3%82%B8%E3%83%8B%E3%82%A2%E3%81%AE%E5%B9%B4%E5%8F%8E%E3%83%BB%E6%99%82%E7%B5%A6", date:"2024", tier:"agency" }
   },
 
   // 職種別の参考平均（実在の公表値・出典つき）
@@ -104,10 +106,20 @@ window.SALARY_DATA = {
     //   年齢が効く現行ロジックではフォールバック/補助（主に目標逆算の経験+N年シミュレーション用）。数値は据え置き。
     expCurve: [[0,380],[2,430],[5,570],[9,688],[14,810],[20,950]],
     roleMul: { ds:0.98, mle:1.05, genai:1.08, consult:1.10, pm:1.06, adjacent:0.82 },
+    // 勤務地補正（年収の大変動要因）。基準=1.0 は「全国平均」＝年齢アンカー(ソフトウェア作成者)の母集団に一致。
+    // 東京/首都圏は全国平均より高く、地方は低い。フルリモートは企業方針が二分（首都圏水準維持／物価連動で調整）
+    // するため、全国平均水準=1.0（中立）に置く＝盛らない。各値は 0.8〜1.25 の現実域。
+    // 根拠（いずれも全国平均=1.0 基準の比）：
+    //  ・doda 平均年収ランキング2024（全職種）：全国426万／東京471万→×1.106／関東451万→×1.059／
+    //    下位エリア(九州沖縄380万・北海道東北381万)→×0.89／中位(東海413・関西407万)→×0.96。
+    //  ・求人ボックス 給料ナビ システムエンジニア(IT職・2024/3集計)：関東456万が最高、九州沖縄398万が最低
+    //    （関東比 約-13%）。IT職でも全職種でも「東京/関東 ≒ +10%・地方 ≒ -10〜13%」で一致。
+    // capital=東京・首都圏 / major=主要都市(大阪・名古屋・福岡等) / regional=その他地方 / remote=フルリモート。
+    locationMul: { capital:1.10, major:0.97, regional:0.90, remote:1.00 },
     // スキル加点(%)。生成AIの+15%は「月10–30万の単価差」(relacom/relasic)を年収比に換算した概算
     skillPrem: { genai:.15, agent:.10, mlops:.08, biz:.10, mgmt:.08, eng:.08, research:.07, comm:.05 },
     premCap: .55,
-    groundingNote: "加点幅は生成AI/LLM・AIエージェント・MLOpsが高単価という公開求人の傾向(relasic/relacom 2025–26)に基づく概算。個別オファーの保証値ではありません。"
+    groundingNote: "加点幅は生成AI/LLM・AIエージェント・MLOpsが高単価という公開求人の傾向(relasic/relacom 2025–26)に基づく概算。勤務地補正(locationMul)は全国平均=1.0 を基準に、東京/首都圏×1.10・地方×0.90 を doda 平均年収ランキング2024 と 求人ボックス システムエンジニア地域別(2024) の比から設定（東京/全国≒+10%・地方≒-10〜13%で両出典一致）。いずれも個別オファーの保証値ではありません。"
   },
 
   // 企業タイプ別の市場レンジ（出典つき）と相性判定用スキル

@@ -175,6 +175,13 @@ try {
   for (const [k, v] of Object.entries(D.model?.roleMul || {})) if (!inRange(v, ROLEMUL)) err(`(e) model.roleMul.${k} 域外(${ROLEMUL.join("〜")}): ${v}`);
   for (const [k, v] of Object.entries(D.model?.skillPrem || {})) if (!inRange(v, PREM)) err(`(e) model.skillPrem.${k} 域外(${PREM.join("〜")}): ${v}`);
   if (D.model && !inRange(D.model.premCap, CAP)) err(`(e) model.premCap 域外(${CAP.join("〜")}): ${D.model.premCap}`);
+  // (g2) 勤務地補正 locationMul（任意セクション＝無ければ skip）。各倍率は現実域 0.8〜1.25 に収める（過大/過小評価防止）。
+  const LOCMUL = [0.8, 1.25];
+  if (D.model && D.model.locationMul) {
+    const lm = D.model.locationMul;
+    if (typeof lm !== "object" || Array.isArray(lm)) err(`(g2) model.locationMul はオブジェクトである必要があります: ${JSON.stringify(lm)}`);
+    else for (const [k, v] of Object.entries(lm)) if (!inRange(v, LOCMUL)) err(`(g2) model.locationMul.${k} 域外(${LOCMUL.join("〜")}): ${v}`);
+  }
 
   // (e2) model.expCurve（経験→中央値の点列）の健全性：
   //   各点が [数値,数値] / 中央値が現実域(SAL) / 年が単調増加（baseByExp の線形補間が破綻しないため）。

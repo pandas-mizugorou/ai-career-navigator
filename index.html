@@ -583,8 +583,14 @@
       <select id="age" aria-label="年齢（年収推定の主軸・任意）"></select>
       <div class="hint">※年齢別の公的統計（実測の中央値）を土台にします。未入力なら経験年数から保守推定します（送信なし）。</div>
 
+      <!-- §8：勤務地（年収の大変動要因）。全国平均が土台なので 東京>1.0／地方<1.0／リモート≒1.0 を掛ける。 -->
+      <label class="fld" for="location">勤務地（年収の大変動要因・任意）</label>
+      <select id="location" aria-label="勤務地（年収補正・任意）"></select>
+      <div class="hint">※勤務地で賃金水準が変わります（全国平均が土台）。東京/首都圏は高め、地方は低め、フルリモートは中立で補正します。未指定なら補正しません。</div>
+
       <label class="fld rangelabel" for="exp">実務経験年数（AI/データ分析）<span class="rangeval" id="expv" aria-hidden="true">7年</span></label>
       <input type="range" id="exp" min="0" max="20" value="7" aria-label="実務経験年数（AI/データ分析）" aria-valuetext="7年">
+      <div class="hint">※AI/データ分析の<b>実務</b>に携わった年数（学習・独学・研修のみの期間は含めません）。誤差を減らすため実務年数で。</div>
 
       <label class="fld" for="role">現在の職種・立ち位置</label>
       <select id="role">
@@ -596,7 +602,7 @@
         <option value="adjacent">隣接職（SE・企画など）からの挑戦</option>
       </select>
 
-      <div class="fld" id="skills-label">スキル・強み（当てはまるものをタップ・複数選択可）</div>
+      <div class="fld" id="skills-label">スキル・強み（<b>実務で使えるレベル</b>のものをタップ・複数選択可）</div>
       <div class="chips" id="skills" role="group" aria-labelledby="skills-label"></div>
       <!-- 選択中の個数・加点合計の動的サマリ（premCap 到達で頭打ちを明示） -->
       <div class="skillsum" id="skillsum" role="status" aria-live="polite"></div>
@@ -811,7 +817,8 @@ function tierBadgeInline(tierKey,date){
 }
 
 // age は数値(22..62) または null（未入力＝「答えたくない」）。null 時は経験年数から保守推定。
-const sel = {age:null, exp:7, role:'genai', pref:'balance', skills:new Set(), current:'', target:''};
+// location はキー(capital/major/regional/remote) または null（未指定＝補正なし＝×1.0）。
+const sel = {age:null, exp:7, role:'genai', pref:'balance', skills:new Set(), current:'', target:'', location:null};
 let touched = false;        // ユーザーが入力を操作したか（初期例ラベルの表示制御）
 let prevMid=null, prevPrem=null;  // 変化フィードバック用の前回値
 
@@ -832,6 +839,26 @@ const AGE_OPTS = [
 ];
 // age select の許容値集合（URLハッシュ/復元のバリデーションに使う）。
 const AGE_VALUES = AGE_OPTS.map(o=>o.v).filter(Boolean);
+
+/* ===== §8：勤務地（年収の大変動要因）の選択肢 =====
+   1つ目は空値（未指定＝補正なし＝×1.0）。キーは data.js の model.locationMul と一致させる。
+   年齢アンカー(ソフトウェア作成者)は全国平均なので、capital(東京)>1.0 / regional(地方)<1.0 / remote≈1.0。 */
+const LOC_OPTS = [
+  {v:'',         label:'未指定（補正なし）'},
+  {v:'capital',  label:'東京・首都圏'},
+  {v:'major',    label:'主要都市（大阪・名古屋・福岡 等）'},
+  {v:'regional', label:'地方'},
+  {v:'remote',   label:'フルリモート'}
+];
+// location select の許容値集合（URLハッシュ/復元のバリデーション）。data.js の locationMul キーと突き合わせて採用。
+const LOC_VALUES = LOC_OPTS.map(o=>o.v).filter(Boolean);
+// 勤務地補正係数。未指定(null)や未知キー、locationMul 未定義なら 1.0（後方互換・盛らない）。
+function locationFactor(){
+  const m=(D.model&&D.model.locationMul)||null;
+  if(!m||!sel.location) return 1.0;
+  const v=m[sel.location];
+  return (typeof v==='number'&&isFinite(v))?v:1.0;
+}
 
 /* ===== Batch5：現年収レンジ select の選択肢（万円・中央値で差分計算） =====
    「答えたくない」は空値。任意入力なので未選択時は差分行を一切出さない（盛らない）。 */
@@ -918,6 +945,7 @@ const SKILL_KEYS = ()=>Object.keys(D.model.skillPrem);
 function writeHash(){
   let h=`exp=${sel.exp}&role=${sel.role}&pref=${sel.pref}&sk=${[...sel.skills].join(',')}`;
   if(Number.isFinite(sel.age)) h+=`&age=${sel.age}`;  // Wave1：年齢（任意・未入力なら付けない＝後方互換）
+  if(sel.location) h+=`&loc=${sel.location}`;   // §8：勤務地（任意・未指定なら付けない＝後方互換）
   if(sel.current) h+=`&cur=${sel.current}`;     // 現年収（任意）
   if(sel.target)  h+=`&tgt=${sel.target}`;      // 目標年収（任意）
   history.replaceState(null,'','#'+h);   // replaceState なので履歴を汚さない
@@ -927,6 +955,8 @@ function applyHash(){
   const p=new URLSearchParams(raw);
   // Wave1：年齢（任意）。許容値リスト(22..62)に一致するものだけ採用。無ければ何もしない＝後方互換。
   if(p.has('age')){ const v=p.get('age'); sel.age = AGE_VALUES.includes(v) ? parseInt(v,10) : sel.age; }
+  // §8：勤務地（任意）。許容キー(capital/major/regional/remote)に一致するものだけ採用。無ければ補完なし＝1.0（後方互換）。
+  if(p.has('loc')){ const v=p.get('loc'); sel.location = LOC_VALUES.includes(v) ? v : null; }
   if(p.has('exp')) sel.exp=Math.max(0,Math.min(20, parseInt(p.get('exp'),10)||0));
   if(p.has('role') && D.model.roleMul[p.get('role')]) sel.role=p.get('role');
   if(p.has('pref') && prefLabel[p.get('pref')]) sel.pref=p.get('pref');
@@ -939,6 +969,8 @@ function applyHash(){
 function syncUIFromSel(){
   // Wave1：年齢（null は空文字＝「答えたくない」に対応）。
   if($('age')) $('age').value = Number.isFinite(sel.age) ? String(sel.age) : '';
+  // §8：勤務地（null は空文字＝「未指定」に対応）。
+  if($('location')) $('location').value = sel.location || '';
   $('exp').value=sel.exp; $('expv').textContent=sel.exp+(sel.exp>=20?'年+':'年');
   $('exp').setAttribute('aria-valuetext', sel.exp>=20?'20年以上':sel.exp+'年');
   $('role').value=sel.role; $('pref').value=sel.pref;
@@ -965,9 +997,11 @@ function copyResult(){
     diffLine=`\n現年収比：${d>=0?'+':''}${fmt(d)}万（${pct>=0?'+':''}${pct}%・本ツール想定式との比較）`;
   }
   const ageTxt = Number.isFinite(sel.age) ? `${sel.age}歳前後` : '年齢未入力';
+  // 勤務地を指定していれば条件行に含める（未指定なら何も足さない＝盛らない）。
+  const locTxt = sel.location ? ` / 勤務地：${(LOC_OPTS.find(o=>o.v===sel.location)||{}).label||sel.location}` : '';
   const text=`【AI転職ナビ 診断結果｜本ツール推定】
 想定年収 中央 ${fmt(mid)}万円（レンジ ${fmt(lo)}〜${fmt(hi)}万）
-条件：${ageTxt} / 経験${sel.exp}年 / ${roleLabel[sel.role]} / 志向：${prefLabel[sel.pref]}
+条件：${ageTxt} / 経験${sel.exp}年 / ${roleLabel[sel.role]} / 志向：${prefLabel[sel.pref]}${locTxt}
 スキル：${skills}${diffLine}
 ※実在の市場平均を本ツールの推定式で加工した目安。実測値ではありません。
 ${location.href}`;
@@ -977,6 +1011,7 @@ ${location.href}`;
 }
 function resetAll(){
   sel.age=null;                    // Wave1：年齢は「答えたくない」(未入力)へ
+  sel.location=null;               // §8：勤務地も「未指定」へ
   sel.exp=7; sel.role='genai'; sel.pref='balance'; sel.skills=new Set();
   sel.current=''; sel.target='';   // Batch5：現年収・目標もクリア
   document.querySelectorAll('#skills .chip').forEach(c=>setChip(c,false));
@@ -1084,6 +1119,8 @@ function boot(){
 
   // Wave1：年齢 select を生成（主軸の入力）。
   if($('age')) $('age').innerHTML=AGE_OPTS.map(o=>`<option value="${esc(o.v)}">${esc(o.label)}</option>`).join('');
+  // §8：勤務地 select を生成（locationMul が存在する場合のみ選択肢を出す＝後方互換）。
+  if($('location')) $('location').innerHTML=LOC_OPTS.map(o=>`<option value="${esc(o.v)}">${esc(o.label)}</option>`).join('');
   // Batch5：現年収・目標年収の select を生成。
   $('current').innerHTML=CURRENT_OPTS.map(o=>`<option value="${esc(o.v)}">${esc(o.label)}</option>`).join('');
   $('target').innerHTML=TARGET_OPTS.map(o=>`<option value="${esc(o.v)}">${esc(o.label)}</option>`).join('');
@@ -1100,6 +1137,8 @@ function boot(){
   $('exp').addEventListener('input',e=>{sel.exp=+e.target.value;$('expv').textContent=sel.exp+(sel.exp>=20?'年+':'年');e.target.setAttribute('aria-valuetext',sel.exp>=20?'20年以上':sel.exp+'年');touched=true;scheduleRender();});
   // Wave1：年齢（主軸）。空値は null（未入力＝経験から保守推定）、それ以外は数値で保持。
   if($('age')) $('age').addEventListener('change',e=>{ const v=e.target.value; sel.age = v==='' ? null : (parseInt(v,10)||null); touched=true; render(); });
+  // §8：勤務地。空値は null（未指定＝×1.0）、それ以外は許容キーのみ保持（不正値は null）。
+  if($('location')) $('location').addEventListener('change',e=>{ const v=e.target.value; sel.location = LOC_VALUES.includes(v) ? v : null; touched=true; render(); });
   $('role').addEventListener('change',e=>{sel.role=e.target.value;touched=true;render();});
   $('pref').addEventListener('change',e=>{sel.pref=e.target.value;touched=true;render();});
   // Batch5：現年収・目標年収（任意）。localStorage 保存も try/catch 防御。
@@ -1272,15 +1311,17 @@ function estimatePercentiles(){
   const prem=Math.min(premRaw,D.model.premCap);
   const skillF=1+prem;
   const ai = aiPremiumFactor(age, sel.role, sel.skills);
-  const f = expF*roleF*skillF*ai.mul;
-  // base*(1+prem)=p50 を保つ（目標逆算 renderTargetBack の前提を壊さない）。
-  const base = A.p50*expF*roleF*ai.mul;
+  // 勤務地補正（§8）。全国平均アンカーに対し東京>1.0／地方<1.0／リモート≒1.0。未指定は 1.0（後方互換）。
+  const locationF = (D.model.locationMul && sel.location) ? (D.model.locationMul[sel.location] ?? 1.0) : 1.0;
+  const f = expF*roleF*skillF*ai.mul*locationF;
+  // base*(1+prem)=p50 を保つ（目標逆算 renderTargetBack の前提を壊さない）。locationF は base 側にも掛ける。
+  const base = A.p50*expF*roleF*ai.mul*locationF;
   return {
     p25:A.p25*f, p50:A.p50*f, p75:A.p75*f, p90:A.p90*f,
     mid:A.p50*f, lo:A.p25*f, hi:A.p90*f,
     prem, premRaw, capped:premRaw>D.model.premCap, base,
     estimatedSpread:A.estimatedSpread, ageKnown, age,
-    parts:{expF,roleF,skillF,aiMul:ai.mul,aiApplied:ai.applied}
+    parts:{expF,roleF,skillF,aiMul:ai.mul,aiApplied:ai.applied,locationF}
   };
 }
 
@@ -1421,7 +1462,9 @@ function percentilesAtAge(age, exp){
   let premRaw=0; sel.skills.forEach(k=>premRaw+=D.model.skillPrem[k]||0);
   const skillF=1+Math.min(premRaw,D.model.premCap);
   const ai=aiPremiumFactor(age, sel.role, sel.skills);
-  const f=expF*roleF*skillF*ai.mul;
+  // 勤務地補正（§8）。estimatePercentiles と同一の合成（…×aiMul×locationF）でカーブも一致させる。
+  const locationF=(D.model.locationMul && sel.location)?(D.model.locationMul[sel.location] ?? 1.0):1.0;
+  const f=expF*roleF*skillF*ai.mul*locationF;
   return { p50:A.p50*f, p75:A.p75*f, estimatedSpread:A.estimatedSpread };
 }
 function renderCurve(e){
@@ -1563,7 +1606,7 @@ function renderTargetBack(base, prem, premRaw){
    p50 = anchorP50 × expF × roleF × skillF × aiMul（estimatePercentiles と同一の合成順）。 */
 function renderCalcBreakdown(e){
   const el=$('calcbreak-body'); if(!el) return;
-  const {expF,roleF,skillF,aiMul,aiApplied}=e.parts;
+  const {expF,roleF,skillF,aiMul,aiApplied,locationF}=e.parts;
   const anchorP50=anchorAt(e.age).p50;            // 年齢アンカー素値（official 実測の補間）
   const stdExp=Math.max(0, e.age-22);             // 年齢相当の標準経験年数
   const prem=e.prem;                              // 実効スキル加点（premCap 内）
@@ -1607,6 +1650,17 @@ function renderCalcBreakdown(e){
     rows+=row('×', 'AI/生成AI上乗せ',
       ['ds','mle','genai'].includes(sel.role)?'関連スキル（生成AI/RAG/MLOps）未選択のため対象外':'対象職種（DS/ML/生成AI）でないため対象外',
       '<span class="cb-na">対象外（×1.00）</span>', tierBadgeInline('agency'));
+  }
+  // ⑥ 勤務地補正（tool・locationMul）。全国平均アンカーに対し東京>1.0／地方<1.0／リモート≒1.0。未指定は対象外(×1.00)。
+  const locLabel = sel.location ? ((LOC_OPTS.find(o=>o.v===sel.location)||{}).label||sel.location) : null;
+  if(sel.location && locationF!=null){
+    rows+=row('×', `勤務地（${esc(locLabel)}）`,
+      `全国平均が土台。東京/首都圏>1.0・地方<1.0・リモート≒1.0（doda/求人ボックスの地域別比）`,
+      fac(locationF), tierBadgeInline('tool'));
+  } else {
+    rows+=row('×', '勤務地',
+      '未指定のため補正なし（指定すると全国平均比で東京/地方を反映）',
+      '<span class="cb-na">未指定（×1.00）</span>', tierBadgeInline('tool'));
   }
   // = 中央値（p50）
   rows+=row('=', '中央値（p50）', '', `<span>${fmt(e.p50)}万</span>`, '', 'cb-total');
