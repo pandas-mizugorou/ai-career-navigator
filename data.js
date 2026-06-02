@@ -32,7 +32,11 @@ window.SALARY_DATA = {
     relacom:    { name:"リラコム 生成AI時代のキャリア戦略", url:"https://comm.relance.jp/blog/ai-engineer-career-strategy-20m-jpy/", date:"2025", tier:"agency" },
     geekly:     { name:"Geekly AI企業ランキング日本", url:"https://www.geekly.co.jp/column/cat-technology/ai_company_rankings_japan/", date:"2026", tier:"agency" },
     sincereed:  { name:"シンシアード DS年収解説", url:"https://sincereed-agent.com/column/datascientist_salary/", date:"2025", tier:"agency" },
-    michaelpage:{ name:"Michael Page 求人実例（機械学習EM・LLM/生成AI領域 600–1500万・東京/フルリモート可）", url:"https://www.michaelpage.co.jp/job-detail/ref/jn-022026-6943594", date:"2026", tier:"posting" }
+    michaelpage:{ name:"Michael Page 求人実例（機械学習EM・LLM/生成AI領域 600–1500万・東京/フルリモート可）", url:"https://www.michaelpage.co.jp/job-detail/ref/jn-022026-6943594", date:"2026", tier:"posting" },
+    mhlw_chingin:{ name:"厚労省 賃金構造基本統計調査 2024（ソフトウェア作成者・年齢階級別）", url:"https://www.mhlw.go.jp/toukei/itiran/roudou/chingin/kouzou/z2024/index.html", date:"2024", tier:"official" },
+    nta_minkan: { name:"国税庁 民間給与実態統計調査 令和6年分（年齢階級別平均給与・男女計）", url:"https://www.nta.go.jp/publication/statistics/kokuzeicho/minkan2024/", date:"2024", tier:"official" },
+    geekly_ai:  { name:"Geekly AIエンジニア年収（年代別・面談来訪データ）", url:"https://www.geekly.co.jp/column/cat-position/ai_engineer_annual_salary/", date:"2026", tier:"agency" },
+    doda_change:{ name:"doda 転職前後の年収変動レポート 2025年11月版", url:"https://www.persol-career.co.jp/newsroom/news/research/2025/20251225_2032/", date:"2025", tier:"agency" }
   },
 
   // 職種別の参考平均（実在の公表値・出典つき）
@@ -49,6 +53,46 @@ window.SALARY_DATA = {
     { band:"40代", lo:641, hi:695, srcId:"mynavi_age" },
     { band:"50代", lo:680, hi:760, srcId:"mynavi_age" }
   ],
+
+  // ▼▼ 正確性改修(2026-06)：年齢別の実測アンカー（二層） ▼▼
+  // 土台 = 厚労省 賃金構造基本統計(2024) ソフトウェア作成者の年齢別「年収換算」(=きまって支給×12＋年間賞与)。
+  // AI/DSに最も近い公的職種実測を基準に採用（国税庁・全職種平均より過大評価/二重計上を避けるため）。
+  // p50=平均(mean)。年齢別の分位(p25/75/90)は公的統計に無いため null（spread で推定補完・UIで明示）。
+  ageAnchor: {
+    basis: "ict_software", srcId: "mhlw_chingin", unit: "万円",
+    note: "厚労省 賃金構造基本統計(2024) ソフトウェア作成者。AI/DSに最も近い公的職種実測を土台に採用。p50=平均。年齢別分位は非公表のため spread で推定補完。",
+    points: [
+      { age:22, p50:348, p25:null, p75:null, p90:null },
+      { age:27, p50:470, p25:null, p75:null, p90:null },
+      { age:32, p50:541, p25:null, p75:null, p90:null },
+      { age:37, p50:631, p25:null, p75:null, p90:null },
+      { age:42, p50:651, p25:null, p75:null, p90:null },
+      { age:47, p50:738, p25:null, p75:null, p90:null },
+      { age:52, p50:695, p25:null, p75:null, p90:null },
+      { age:57, p50:731, p25:null, p75:null, p90:null },
+      { age:62, p50:557, p25:null, p75:null, p90:null }
+    ]
+  },
+  // 参考：国税庁 全職種・年齢別平均（背景比較用。AI/DS推定の主アンカーには使わない）
+  ageAnchorNational: {
+    basis: "national", srcId: "nta_minkan", unit: "万円",
+    note: "国税庁 民間給与実態統計(令和6年) 年齢階級別平均給与(男女計・全職種)。全国母集団でAI/DSより低い。全体感の比較・背景表示用。",
+    points: [
+      { age:22, p50:277 }, { age:27, p50:407 }, { age:32, p50:449 }, { age:37, p50:482 },
+      { age:42, p50:516 }, { age:47, p50:540 }, { age:52, p50:559 }, { age:57, p50:572 }, { age:62, p50:473 }
+    ]
+  },
+  // 年齢別の分位(p25/75/90)が公的統計に無いため、p50から推定で補う（実測が得られ次第置換。UIで「推定」と明示）。
+  spread: { tier: "tool", ratio: { p25:0.85, p75:1.20, p90:1.45 },
+    note: "分位はソフトウェア作成者の年齢別分布が非公表のため、AIエンジニア年代別の平均/最高比(Geekly)から概算。" },
+  // AI/生成AI職の「ソフトウェア作成者(土台)比」上乗せ。IT職内の差なので小さい。cap で頭打ち（過大評価回避）。
+  aiPremium: { tier: "agency", srcId: "geekly_ai", cap: 1.20,
+    byAgeBand: [ { band:"20代", mul:1.10 }, { band:"30代", mul:1.14 }, { band:"40代", mul:1.09 } ],
+    note: "Geekly AIエンジニア年代別 ÷ 賃金構造 ソフトウェア作成者(同年代)。IT職内の上乗せのため小さい。生成AIスキル個別の加点は skillPrem 側で扱い二重計上を回避。50代は出典に無いため非適用。" },
+  // 転職時の昇給実測（現年収比の見込みに使う）
+  raiseOnChange: { tier: "agency", srcId: "doda_change",
+    upRatio: 0.585, avgRaiseIfUp: 72.7, avgChangeAll: 7.1, medianRaise: null,
+    note: "doda 2025/11。転職者の58.5%が昇給、昇給者の平均+72.7万、全体ならし+7.1万。中央値は非公表(不明)。doda利用者母集団に限る。" },
 
   // ▼▼ ここから下は「本ツール推定」= 上の実在値から本ツールが組んだ計算ロジック ▼▼
   // 実測値ではないため、画面では tier:"tool" として明示されます。
