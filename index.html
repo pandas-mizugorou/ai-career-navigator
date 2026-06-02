@@ -335,7 +335,11 @@
 <script>
 const D = window.SALARY_DATA;
 const $ = id=>document.getElementById(id);
-const fmt = n=>Math.round(n).toLocaleString();
+const fmt = n=>Math.round(n).toLocaleString('ja-JP');
+// data.js 由来の文字列を DOM へ注入する際のサニタイズ。
+// 月次自動更新は WebSearch 結果を data.js に書き込むため、人手レビューを抜けた文字列混入経路が実在する（防御）。
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const safeUrl = u => /^https?:\/\//i.test(String(u||'')) ? String(u) : '#';
 
 function daysSince(iso){
   const then=new Date(iso+"T00:00:00"); const now=new Date();
@@ -347,12 +351,12 @@ function tierMark(t){ return `<span class="tmark" aria-hidden="true" style="colo
 function srcBadge(srcId){
   const s=D.sources[srcId]; if(!s) return '';
   const t=D.tiers[s.tier];
-  return `<button type="button" class="src-badge" data-src="${srcId}" aria-haspopup="dialog" aria-expanded="false" title="${t.label}：${t.desc}／出典：${s.name}（${s.date}）／タップで詳細">
-    ${tierMark(t)}${t.label}<span class="tdate">${s.date}</span></button>`;
+  return `<button type="button" class="src-badge" data-src="${esc(srcId)}" aria-haspopup="dialog" aria-expanded="false" aria-label="出典 ${esc(s.name)}、${esc(t.label)}、${esc(s.date)}。詳細を開く" title="${esc(t.label)}：${esc(t.desc)}／出典：${esc(s.name)}（${esc(s.date)}）／タップで詳細">
+    ${tierMark(t)}${esc(t.label)}<span class="tdate">${esc(s.date)}</span></button>`;
 }
 function tierBadgeInline(tierKey,date){
   const t=D.tiers[tierKey];
-  return `<button type="button" class="src-badge" data-tier="${tierKey}" aria-haspopup="dialog" aria-expanded="false" title="${t.label}：${t.desc}／タップで詳細">${tierMark(t)}${t.label}${date?`<span class="tdate">${date}</span>`:''}</button>`;
+  return `<button type="button" class="src-badge" data-tier="${esc(tierKey)}" aria-haspopup="dialog" aria-expanded="false" aria-label="${esc(t.label)}。説明を開く" title="${esc(t.label)}：${esc(t.desc)}／タップで詳細">${tierMark(t)}${esc(t.label)}${date?`<span class="tdate">${esc(date)}</span>`:''}</button>`;
 }
 
 const sel = {exp:7, role:'genai', pref:'balance', skills:new Set()};
@@ -505,12 +509,18 @@ function boot(){
   showRevisitDiff(personalRange().mid);   // 前回訪問時との差分（localStorage）
 }
 
+// 基準年収カーブは data.js の model.expCurve（[年,中央値] の点列）を単一ソースにする。
+// 点間を線形補間するので端点で連続＝スライダーで階段状に跳ねない。範囲外はクランプ。
 function baseByExp(y){
-  if(y<=2) return 380 + y*25;
-  if(y<=5) return 480 + (y-2)*30;
-  if(y<=9) return 600 + (y-5)*22;
-  if(y<=14) return 700 + (y-9)*22;
-  return Math.min(820 + (y-14)*16, 980);
+  const pts = D.model.expCurve;
+  const lo = pts[0], hi = pts[pts.length-1];
+  if(y <= lo[0]) return lo[1];
+  if(y >= hi[0]) return hi[1];
+  for(let i=1;i<pts.length;i++){
+    const [x0,v0] = pts[i-1], [x1,v1] = pts[i];
+    if(y <= x1) return v0 + (v1-v0)*(y-x0)/(x1-x0);
+  }
+  return hi[1];
 }
 function personalRange(){
   let mid=baseByExp(sel.exp)*D.model.roleMul[sel.role];
