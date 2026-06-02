@@ -64,6 +64,9 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Claude GitHub App 未インストールでも動くよう、ワークフロー自動発行トークンを明示。
+          # これで App token exchange をスキップし、この権限(contents/issues)で GitHub にアクセスする。
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           prompt: |
             あなたは「AI/データサイエンス転職ナビ」のデータ更新担当として動作し、**実際に data.js を Write/Edit で書き換える**必要があります。計画・要約だけで終わらせず、必ずファイルを更新してください。
 
