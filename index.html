@@ -9,8 +9,18 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="転職ナビ">
 <meta name="description" content="AI/データサイエンス人材の想定年収と転職先を診断（日本国内市場・出典つき）">
+<!-- CSP：外部送信ゼロを構造的に強制。インラインJS/CSS・data:アイコン・SW登録・同一オリジンfetch(SW)が動く範囲に絞る。
+     connect-src 'self' は SW の同一オリジン fetch のため。form-action 'none' で送信経路を塞ぐ。 -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'self'; form-action 'none'">
+<!-- OGP / Twitter Card：URLハッシュ共有時の SNS プレビュー用（画像は省略）。description は上の meta description と整合。 -->
+<meta property="og:title" content="AI / データサイエンス 転職ナビ — 年収・企業診断">
+<meta property="og:description" content="AI/データサイエンス人材の想定年収と転職先を診断（日本国内市場・出典つき）">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b1020'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' fill='%2336d399' font-family='sans-serif' font-weight='bold'%3E¥%3C/text%3E%3C/svg%3E">
+<!-- iOS ホーム画面アイコン（180x180 相当の data:SVG・不透明背景・角丸は iOS 側で付与） -->
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' fill='%230b1020'/%3E%3Ctext x='90' y='124' font-size='104' text-anchor='middle' fill='%2336d399' font-family='sans-serif' font-weight='bold'%3E%C2%A5%3C/text%3E%3C/svg%3E">
 <title>AI/データサイエンス転職ナビ — 年収・企業診断</title>
 <style>
   :root{
@@ -21,14 +31,24 @@
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
+  /* ノッチ/ホームインジケータ干渉を解消：本文の最小高さを動的ビューポートに合わせる */
+  body{min-height:100dvh}
   /* キーボード操作時のフォーカス可視化（WCAG 2.4.7） */
   :where(a,button,select,summary,input,[tabindex]):focus-visible{outline:2px solid var(--accent2);outline-offset:2px;border-radius:6px}
+  /* スクリーンリーダー専用（視覚的に隠すが SR には読ませる）— WCAG 1.3.1 / 4.1.3 */
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+  /* スキップリンク：フォーカス時のみ可視（WCAG 2.4.1 ブロックスキップ） */
+  .skip-link{position:absolute;left:-9999px;top:0;z-index:200;background:var(--accent2);color:#06122a;
+    font-weight:800;font-size:13px;padding:10px 16px;border-radius:0 0 10px 0;text-decoration:none}
+  .skip-link:focus{left:0}
   body{
     font-family:"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic UI",Meiryo,sans-serif;
     background:radial-gradient(1200px 800px at 80% -10%,#1a2a55 0,transparent 60%),var(--bg);
     color:var(--ink); line-height:1.6; -webkit-font-smoothing:antialiased;
   }
-  .wrap{max-width:1180px;margin:0 auto;padding:24px 20px 80px}
+  /* safe-area-inset：ノッチ/ホームインジケータ/丸角に本文が潜り込まないよう左右下に加算（横向き表示も考慮） */
+  .wrap{max-width:1180px;margin:0 auto;
+    padding:24px calc(20px + env(safe-area-inset-right)) calc(80px + env(safe-area-inset-bottom)) calc(20px + env(safe-area-inset-left))}
   header.hero{
     background:var(--grad); border-radius:20px; padding:26px 30px;
     color:#06122a; position:relative; overflow:hidden; box-shadow:0 20px 50px rgba(0,0,0,.35);
@@ -42,15 +62,35 @@
   .fresh .dot{width:9px;height:9px;border-radius:50%;background:var(--accent2);box-shadow:0 0 10px var(--accent2)}
   .fresh.stale .dot{background:var(--warn);box-shadow:0 0 10px var(--warn)}
   .fresh .upd{color:var(--sub)}
+  .fresh .market{color:var(--sub)}
+  .fresh .market b{color:#bcd0ff}
   .fresh b{color:var(--ink)}
-  .fresh .howto{margin-left:auto;color:var(--sub)}
+  /* 運用者向けの更新手順はバナーから恒久撤去し trust パネルへ移設。
+     バナーは「最終更新日＋鮮度ドット＋対象市場」だけのクリーンな信頼シグナルに専念する。 */
+  .fresh .howto{display:none}
   .fresh code{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:2px 7px;color:#bcd0ff;font-size:11.5px}
   .stalewarn{color:var(--warn);font-weight:700}
+  /* オフライン時は中立色（青寄りグレー）。赤はエラー/警告専用に温存。 */
+  .fresh.offline .dot{background:var(--sub);box-shadow:0 0 10px var(--sub)}
+  .offlinenote{color:#bcd0ff;font-weight:700}
 
   .grid{display:grid;grid-template-columns:380px 1fr;gap:22px;margin-top:20px}
-  @media(max-width:900px){.grid{grid-template-columns:1fr}}
+  /* モバイル/タブレットでは主役（年収サマリ）を入力より前面・fold 内へ。
+     grid→flex column に切替え、結果カラム(.resultcol)を入力カードより上に order で出す。 */
+  @media(max-width:900px){
+    .grid{display:flex;flex-direction:column;gap:18px}
+    .grid > .resultcol{order:1}
+    .grid > .card{order:2}   /* 入力カードは結果の下へ回す */
+    /* 結果カラム内：年収カード(.hero-result)を最上部へ。信頼度ラダーはその後ろに移す。
+       → スクロール最上部で視線が必ず大きな年収数字に当たる。 */
+    .resultcol{display:flex;flex-direction:column}
+    .resultcol > .hero-result{order:0}
+    .resultcol > #ladder{order:1}
+    .resultcol > #sr-summary{order:-1}  /* SR 用ライブ領域は視覚順に影響しない */
+    .resultcol > .card:not(.hero-result){order:2}
+  }
   @media(max-width:640px){
-    .wrap{padding:16px 12px 70px}
+    .wrap{padding:16px calc(12px + env(safe-area-inset-right)) calc(70px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left))}
     header.hero{padding:20px 18px;border-radius:16px}
     header.hero h1{font-size:20px}
     header.hero p{font-size:12.5px}
@@ -58,12 +98,21 @@
     .bigfig{font-size:44px}
     .bigfig .unit{font-size:18px}
     .fresh{font-size:11.5px}
-    /* 制作者向けの更新手順はモバイルのファーストビューから隠す（trustパネルに残る） */
-    .fresh .howto{display:none}
-    /* チップのタップ領域を指サイズに */
-    .chips{gap:10px}
-    .chip{padding:10px 14px}
+    /* チップのタップ領域を指サイズに（最小44px・WCAG 2.5.5 / 2.5.8）。
+       inline-flex で text とパディングを縦中央に揃え、min-height を確実に効かせる。 */
+    .chips{gap:12px}
+    .chip{display:inline-flex;align-items:center;min-height:44px;padding:10px 14px}
     .chip small{white-space:nowrap}
+    /* range スライダーの当たり判定拡大：トラックは細いままで触れる帯を広げ、
+       touch-action:none でドラッグ中のページスクロール競合を防ぐ。 */
+    input[type=range]{min-height:44px;padding:16px 0;background-clip:content-box;touch-action:none}
+    /* select も指サイズに */
+    select{min-height:44px}
+    /* 出典バッジをモバイルで押しやすく：独立行＋擬似要素で不可視のヒット領域を上下に拡張（見た目は維持） */
+    .src-badge{min-height:32px;position:relative}
+    .src-badge[data-src],.src-badge[data-tier]{margin:2px 0;align-self:flex-start}
+    .src-badge[data-src]::after,.src-badge[data-tier]::after{content:"";position:absolute;
+      left:0;right:0;top:-7px;bottom:-7px}  /* 32+14=46px の不可視タップ領域 */
     /* 企業テーブルを縦カード化 */
     table thead{display:none}
     table,table tbody,table tr,table td{display:block;width:100%}
@@ -76,6 +125,19 @@
     /* P2-11 複数行セルはラベル上・値下に積む（左右に散らばらない） */
     table td.cell-stack{display:block;text-align:left;white-space:normal}
     table td.cell-stack::before{display:block;text-align:left;margin-bottom:3px}
+    /* 640px 以下：出典ポップを画面下部固定のボトムシート風に。
+       座標計算（JS 側）をスキップし、長い出典名も折り返す（white-space:normal / word-break）。
+       safe-area-inset-bottom 分だけ底上げしてホームインジケータに潜らせない。 */
+    .src-pop.sheet{position:fixed !important;left:0 !important;right:0 !important;
+      top:auto !important;bottom:0 !important;max-width:none !important;width:100% !important;
+      border-radius:16px 16px 0 0;border-left:0;border-right:0;border-bottom:0;
+      padding:16px 18px calc(18px + env(safe-area-inset-bottom));
+      box-shadow:0 -16px 44px rgba(0,0,0,.6);white-space:normal;word-break:break-word}
+    .src-pop.sheet .pop-close{top:10px;right:12px}
+    @media(prefers-reduced-motion:no-preference){
+      @keyframes sheetup{from{transform:translateY(100%)}to{transform:translateY(0)}}
+      .src-pop.sheet{animation:sheetup .22s ease}
+    }
   }
   .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px}
   .card h2{font-size:16px;margin:0 0 14px;color:#c7d2f0;font-weight:700;display:flex;align-items:center;gap:9px}
@@ -83,7 +145,9 @@
   label.fld{display:block;font-size:13px;color:var(--sub);margin:14px 0 6px;font-weight:600}
   label.fld.rangelabel{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
   select,input[type=range]{width:100%}
-  select{background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px}
+  /* font-size:16px は iOS Safari の入力フォーカス時の自動ズームを止める閾値。
+     maximum-scale=1 は WCAG 1.4.4（テキスト拡大）に反するため採らない。 */
+  select{background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:16px}
   .rangeval{color:var(--accent2);font-weight:800}
   input[type=range]{-webkit-appearance:none;appearance:none;height:8px;background:var(--line);border-radius:999px;margin-top:10px}
   input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:50%;
@@ -95,10 +159,31 @@
   .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
   .chip{user-select:none;cursor:pointer;background:var(--chip);border:1px solid var(--line);
     color:var(--sub);padding:7px 12px;border-radius:999px;font-size:12.5px;font-weight:600;transition:.15s}
-  .chip[data-on="1"]{background:rgba(91,140,255,.18);border-color:var(--accent);color:#dbe6ff}
+  /* 選択状態の背景を一段濃く（不透明度 .18→.30）。色だけに頼らず ✓ 記号も併用。
+     文字 #eaf1ff は背景合成色上でも AA(4.5:1) を満たす。 */
+  .chip[data-on="1"]{background:rgba(91,140,255,.30);border-color:var(--accent);color:#eaf1ff}
   .chip[data-on="1"]::before{content:"✓";font-weight:900;margin-right:3px;color:var(--accent2)}  /* 色に頼らない選択状態 */
   .chip small{opacity:.6;font-weight:700;margin-left:4px}
   .hint{font-size:11.5px;color:#8b96bd;margin-top:6px}
+  /* スキル選択の加点サマリ（動的） */
+  .skillsum{margin-top:10px;font-size:12px;color:#b3bedf;display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+    background:rgba(91,140,255,.10);border:1px solid var(--line);border-radius:10px;padding:7px 11px}
+  .skillsum b{color:#dbe6ff;font-weight:800}
+  .skillsum .ssum-add{color:var(--accent2);font-weight:800}
+  .skillsum .ssum-cap{color:var(--warn);font-weight:700}
+  .skillsum.empty{color:#8b96bd;background:transparent;border-style:dashed}
+  .groundinghint{display:flex;align-items:center;gap:6px;flex-wrap:wrap;line-height:1.5}
+  .benchnote{font-size:10.5px;color:#7a86ad}
+  /* premCap 飽和の正直な開示 */
+  .capnote{color:var(--warn);font-weight:700}
+  /* 同年代の実測レンジ（ageBands） */
+  .agerange{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:8px 0 2px;font-size:12px;color:#b3bedf}
+  .agerange .ar-val{color:#dbe6ff;font-weight:800;white-space:nowrap}
+  .agerange .ar-pos{font-weight:700}
+  .agerange .ar-pos.hi{color:var(--accent2)}
+  .agerange .ar-pos.mid{color:#bcd0ff}
+  .agerange .ar-pos.lo{color:var(--warn)}
+  .agerange .ar-cav{color:#8b96bd;font-size:11px;width:100%;margin-top:1px}
   /* 初期例ラベル（未操作時のみ表示）と推定開示文 */
   .examplenote{font-size:12px;color:#dbe6ff;background:rgba(91,140,255,.12);border:1px solid var(--accent);border-radius:10px;padding:9px 12px;margin-top:14px;line-height:1.5}
   .examplenote b{color:#fff}
@@ -113,16 +198,38 @@
   .bar{position:relative;height:46px;background:var(--panel2);border-radius:12px;margin:18px 0 6px;overflow:hidden;border:1px solid var(--line)}
   .bar .scale{position:absolute;inset:0;display:flex;justify-content:space-between;padding:0 10px;align-items:flex-end;font-size:10px;color:var(--sub)}
   .bar .fill{position:absolute;top:0;bottom:0;background:var(--grad);opacity:.8;border-radius:10px;transition:.4s}
-  .bar .btick{position:absolute;top:0;bottom:0;width:2px;background:rgba(232,237,255,.22);z-index:2}
+  /* 市場平均ティック：不透明度を上げて見やすく（旧 .22 は埋もれていた）。市場平均は重要な比較基準。 */
+  .bar .btick{position:absolute;top:0;bottom:0;width:2px;background:rgba(205,215,245,.62);z-index:2}
   .bar .midmark{position:absolute;top:0;bottom:0;width:2px;background:var(--ink);transform:translateX(-50%);z-index:4;box-shadow:0 0 6px rgba(0,0,0,.55);transition:left .4s}
   .bar .midmark::after{content:"▼";position:absolute;top:1px;left:50%;transform:translateX(-50%);font-size:9px;color:var(--ink);line-height:1}
   .markrow{display:flex;justify-content:space-between;gap:10px;font-size:11px;color:var(--sub);margin-top:2px;flex-wrap:wrap}
+  /* 年収バー凡例：色サンプル付きミニ記号（帯・▼・縦線）。title 非依存の可視ラベルで WCAG を改善。 */
+  .markrow .legend{display:flex;align-items:center;gap:4px 10px;flex-wrap:wrap}
+  .markrow .lg{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+  .markrow .lg-band{width:18px;height:9px;border-radius:3px;background:var(--grad);opacity:.85;flex:0 0 auto}
+  .markrow .lg-tri{color:var(--ink);font-size:11px;line-height:1;font-weight:900}
+  .markrow .lg-line{width:2px;height:12px;background:#cdd7f5;flex:0 0 auto;border-radius:1px}
+  /* バー直下の可視ラベル（▼直下に「あなた」・市場平均線下に職種名/「市場平均」）。
+     title 非依存・極小だが AA を満たす色（背景 var(--panel)=#141b30 上で #9aa6c8≒5.1:1）。 */
+  .barlabels{position:relative;height:14px;margin-top:1px;font-size:9px;color:var(--sub);pointer-events:none}
+  .barlabels .you{position:absolute;transform:translateX(-50%);color:#dbe6ff;font-weight:800;white-space:nowrap;line-height:1}
+  .barlabels .bl-mkt{position:absolute;transform:translateX(-50%);color:#9aa6c8;white-space:nowrap;line-height:1;font-weight:700;max-width:74px;overflow:hidden;text-overflow:ellipsis}
+  /* 推定開示クラスタ：1行サマリ＋初期例ノートを1ブロックに統合（境界・余白を共有） */
+  .estimate-cluster{margin-top:12px}
+  .estimate-cluster .estimate-note{margin-top:0}
+  .estimate-cluster .examplenote{margin-top:8px}
   /* 変化フィードバック */
   @keyframes flashglow{0%{filter:drop-shadow(0 0 18px rgba(54,211,153,.35))}35%{filter:drop-shadow(0 0 32px rgba(54,211,153,.9))}100%{filter:drop-shadow(0 0 18px rgba(54,211,153,.35))}}
   .bigfig.flash{animation:flashglow .55s ease}
   .up-arrow{color:var(--accent2);font-weight:900;margin-right:3px}
   .down-arrow{color:var(--warn);font-weight:900;margin-right:3px}
-  @media(prefers-reduced-motion:reduce){.bigfig.flash{animation:none}}
+  @media(prefers-reduced-motion:reduce){
+    .bigfig.flash{animation:none}
+    /* 動きの抑制を望むユーザーにはバー・マーカー・チップ・スライダーつまみの遷移も止める（WCAG 2.3.3） */
+    .bar .fill,.bar .midmark,.chip,
+    input[type=range]::-webkit-slider-thumb{transition:none}
+    input[type=range]:active::-webkit-slider-thumb{transform:none}
+  }
   /* 「あなたの次の一手」統合ブロック */
   .nextmove{background:linear-gradient(160deg,rgba(91,140,255,.13),rgba(54,211,153,.10));border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:14px}
   .nextmove .nm-head{font-size:11px;color:var(--sub);font-weight:800;letter-spacing:.04em;margin-bottom:6px}
@@ -159,21 +266,31 @@
   /* 出典ポップオーバー */
   .src-pop{position:absolute;z-index:60;max-width:280px;background:var(--panel2);border:1px solid var(--accent);
     border-radius:12px;padding:12px 14px;box-shadow:0 16px 44px rgba(0,0,0,.55);font-size:12.5px;color:#cdd7f5;line-height:1.6}
+  .src-pop:focus{outline:2px solid var(--accent2);outline-offset:2px}
+  .src-pop .pop-close{position:absolute;top:6px;right:8px;width:26px;height:26px;line-height:1;
+    background:transparent;border:0;color:var(--sub);font-size:19px;font-weight:700;cursor:pointer;
+    border-radius:7px;display:flex;align-items:center;justify-content:center;padding:0}
+  .src-pop .pop-close:hover{color:var(--ink);background:rgba(232,237,255,.08)}
+  .src-pop .pop-tier{padding-right:24px}
   .src-pop .pop-tier{display:flex;align-items:center;gap:7px;font-size:14px;color:#fff;margin-bottom:3px}
   .src-pop .pop-tier .tmark{font-size:15px;font-weight:900}
   .src-pop .pop-desc{color:var(--sub);margin-bottom:7px}
   .src-pop .pop-src,.src-pop .pop-date{color:#dbe6ff}
-  .src-pop .pop-src span,.src-pop .pop-date span{display:inline-block;min-width:34px;color:var(--sub);font-weight:700;margin-right:6px}
+  .src-pop .pop-src span,.src-pop .pop-date span{display:inline-block;min-width:42px;color:var(--sub);font-weight:700;margin-right:6px}
   .src-pop .pop-note{color:var(--sub);font-size:11.5px}
   .src-pop .pop-link{display:inline-block;margin-top:9px;color:#8aa3e6;text-decoration:none;font-weight:800}
   .src-pop .pop-link:hover{text-decoration:underline}
 
   /* 信頼度ラダー（常設凡例） */
+  /* 年収カードの後ろ（企業テーブル直上）に置く凡例。resultcol の gap(22px) を活かしつつ、
+     上の年収カードへ少し寄せて「年収カード→凡例→テーブル」の塊感を出す。 */
   .trust-ladder{display:flex;flex-wrap:wrap;align-items:center;gap:5px 9px;background:var(--panel);
-    border:1px solid var(--line);border-radius:12px;padding:9px 14px;font-size:11.5px;color:var(--sub);margin-bottom:-4px}
+    border:1px solid var(--line);border-radius:12px;padding:9px 14px;font-size:11.5px;color:var(--sub);margin:-8px 0 -4px}
   .trust-ladder .ladder-title{font-weight:800;color:#c7d2f0}
-  .trust-ladder .ladder-arrow{font-size:10px;color:#6f7aa0;font-weight:700}
-  .trust-ladder .ladder-sep{color:#4a5780}
+  /* ラダーの装飾テキストも本文同様 AA(4.5:1) を満たす（背景 var(--panel)=#141b30 上）。
+     旧 #6f7aa0/#4a5780 は 4.04/2.41 で不合格だったため引き上げ。 */
+  .trust-ladder .ladder-arrow{font-size:10px;color:#9aa6c8;font-weight:700}
+  .trust-ladder .ladder-sep{color:#8b96bd}
   .trust-ladder .ladder-item{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
   .trust-ladder .ladder-item .tmark{font-size:12px;font-weight:900}
 
@@ -188,6 +305,20 @@
   details.trust{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:4px 18px;margin-top:22px}
   details.trust summary{cursor:pointer;font-weight:800;color:#dbe6ff;padding:12px 0;font-size:14px}
   details.trust summary::marker{color:var(--accent)}
+  /* 最重要1行を summary に常時可視（パネルを開かずとも誠実な前提が読める） */
+  .summary-key{display:block;margin-top:5px;font-size:11.5px;font-weight:700;color:var(--warn);line-height:1.4}
+  /* 出典構成（tier別件数バー） */
+  #tiercompose{margin:4px 0 6px}
+  .composerow{display:flex;align-items:center;gap:9px;margin:5px 0;font-size:12px}
+  .composerow .cl-label{flex:0 0 96px;display:inline-flex;align-items:center;gap:5px;color:#dbe6ff;font-weight:700}
+  .composerow .cl-label .tmark{font-size:12px;font-weight:900}
+  .composerow .cl-track{flex:1 1 auto;height:11px;background:var(--panel2);border:1px solid var(--line);border-radius:999px;overflow:hidden}
+  .composerow .cl-fill{height:100%;border-radius:999px;min-width:2px}
+  .composerow .cl-cnt{flex:0 0 auto;color:var(--sub);font-weight:700;min-width:34px;text-align:right}
+  .composenote{font-size:12px;color:#b3bedf;margin:8px 0 2px;line-height:1.6}
+  .composenote b{color:#dbe6ff}
+  .howto-moved{font-size:12px;color:#9aa6c8;line-height:1.6}
+  .howto-moved code{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:2px 7px;color:#bcd0ff;font-size:11.5px}
   .trust h3{font-size:13px;color:var(--accent2);margin:14px 0 6px}
   .trust p,.trust li{font-size:12.5px;color:#b3bedf}
   .tierline{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:12.5px}
@@ -206,33 +337,190 @@
   .act.ghost{background:var(--panel2);color:var(--ink);border:1px solid var(--line)}
   .act:hover{filter:brightness(1.06)}
   .act-msg{font-size:11.5px;color:var(--accent2);font-weight:700}
+  /* 成功時は一時的にピル背景で軽く強調（クラス .show を JS が付与）。reduced-motion 配慮。 */
+  .act-msg.show{background:rgba(54,211,153,.16);border:1px solid rgba(54,211,153,.45);
+    border-radius:999px;padding:3px 11px}
+  @media(prefers-reduced-motion:no-preference){
+    @keyframes msgpop{from{transform:scale(.92);opacity:.4}to{transform:scale(1);opacity:1}}
+    .act-msg.show{animation:msgpop .2s ease}
+  }
+  /* 共有の送信ゼロ訴求 hint */
+  .sharehint{margin-top:8px;color:#9aa6c8}
   .diffnote{font-size:12px;color:#cdd7f5;background:rgba(54,211,153,.10);border:1px solid rgba(54,211,153,.35);border-radius:9px;padding:7px 11px;margin-top:12px}
   .diffnote b{color:#fff}
   footer{margin-top:26px;font-size:11.5px;color:#8b96bd;text-align:center;line-height:1.8}
   .disc{background:var(--panel);border:1px dashed var(--line);border-radius:12px;padding:12px 16px;font-size:11.5px;color:#8b96bd;margin-top:16px}
   #err{display:none;background:rgba(240,104,104,.12);border:1px solid var(--bad);color:#ffadad;padding:14px;border-radius:12px;margin-top:16px;font-size:13px}
+
+  /* ===== Batch5：現年収比の差分行 ===== */
+  /* プラスは accent2（緑）、マイナスは中立（赤は使わない＝マイナスは「悪」ではないため）。 */
+  .currentdiff{font-size:12.5px;color:#cdd7f5;background:rgba(91,140,255,.10);
+    border:1px solid var(--line);border-radius:9px;padding:8px 12px;margin-top:12px;line-height:1.55}
+  .currentdiff .cd-amt{font-weight:800}
+  .currentdiff.up .cd-amt{color:var(--accent2)}
+  .currentdiff.down .cd-amt{color:#bcd0ff}   /* マイナスは中立色（青寄り） */
+  .currentdiff .cd-note{display:block;color:#9aa6c8;font-size:11.5px;margin-top:3px}
+  .currentdiff b{color:#dbe6ff}
+
+  /* ===== Batch5：目標年収の逆算ボックス ===== */
+  .targetbox{font-size:12.5px;color:#cdd7f5;border-radius:10px;padding:10px 13px;margin-top:12px;line-height:1.6}
+  .targetbox.reach{background:rgba(54,211,153,.10);border:1px solid rgba(54,211,153,.40)}
+  .targetbox.miss{background:rgba(247,185,85,.10);border:1px solid rgba(247,185,85,.40)}
+  .targetbox .tb-head{font-weight:800;color:#dbe6ff;margin-bottom:4px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+  .targetbox .tb-amt{color:var(--accent2);font-weight:800}
+  .targetbox ol{margin:6px 0 2px;padding-left:20px}
+  .targetbox li{margin:3px 0}
+  .targetbox b{color:#fff}
+  .targetbox .tb-cav{display:block;color:#9aa6c8;font-size:11px;margin-top:6px}
+
+  /* ===== Batch5：企業行の不足スキル小タグ＋求人リンク ===== */
+  .gap-tags{margin-top:4px;display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+  .gap-tags .gap-lead{font-size:10.5px;color:#9aa6c8;font-weight:700}
+  .gap-tag{display:inline-block;background:rgba(247,185,85,.16);border:1px solid rgba(247,185,85,.4);
+    color:#ffd58a;border-radius:6px;padding:1px 7px;font-size:10.5px;font-weight:700}
+  .job-link{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;
+    color:#8aa3e6;text-decoration:none;background:var(--panel2);border:1px solid var(--line);
+    border-radius:999px;padding:3px 10px;margin-top:5px;cursor:pointer;font-family:inherit;line-height:1.4}
+  .job-link:hover{border-color:var(--accent);text-decoration:none}
+  /* 640px 以下の縦カードでは左寄せに */
+  @media(max-width:640px){
+    table td.cell-gap{display:block;text-align:left}
+    table td.cell-gap::before{display:block;text-align:left;margin-bottom:3px}
+    .gap-tags,.job-link{justify-content:flex-start}
+  }
+  /* 求人検索の宛先開示（details） */
+  details.jobdisclose{margin-top:10px;font-size:11.5px}
+  details.jobdisclose summary{cursor:pointer;color:#9aa6c8;font-weight:700}
+  details.jobdisclose .jd-body{color:#b3bedf;margin-top:6px;line-height:1.6}
+  details.jobdisclose code{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:#bcd0ff;font-size:11px;word-break:break-all}
+
+  /* ===== Batch5：活動の打ち手 ===== */
+  #actionpref{color:var(--accent2);font-weight:800}
+  .amove{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px dashed var(--line)}
+  .amove:last-child{border-bottom:0}
+  .amove .am-ic{flex:0 0 auto;width:22px;height:22px;border-radius:6px;background:var(--grad);color:#06122a;
+    font-weight:900;font-size:12px;display:flex;align-items:center;justify-content:center;margin-top:1px}
+  .amove b{color:#dbe6ff}
+  .amove .am-why{display:block;color:var(--sub);font-size:11.5px;margin-top:2px}
+
+  /* ===== Batch5：キャリア年収カーブ SVG ===== */
+  #curve svg{display:block;width:100%;height:auto}
+  .curve-line{fill:none;stroke:var(--accent2);stroke-width:2.5}
+  .curve-line.max{stroke:var(--accent);stroke-dasharray:6 5}
+  .curve-dot{fill:var(--accent2)}
+  .curve-dot.max{fill:var(--accent)}
+  .curve-axis{stroke:var(--line);stroke-width:1}
+  .curve-grid{stroke:var(--line);stroke-width:1;opacity:.45}
+  .curve-txt{fill:#9aa6c8;font-size:10px;font-family:inherit}
+  .curve-txt.val{fill:#dbe6ff;font-weight:800;font-size:10.5px}
+  .curvelegend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:10px;font-size:11.5px;color:var(--sub);align-items:center}
+  .curvelegend .cl-item{display:inline-flex;align-items:center;gap:6px}
+  .curvelegend .cl-swatch{width:22px;height:0;border-top:3px solid var(--accent2);flex:0 0 auto}
+  .curvelegend .cl-swatch.max{border-top:3px dashed var(--accent)}
+  .curvelegend b{color:#dbe6ff}
+
+  /* PWA 更新トースト（新キャッシュ準備完了 → タップで再読込）。中立色・赤は使わない。 */
+  .pwa-toast{position:fixed;left:50%;transform:translateX(-50%);z-index:300;
+    bottom:calc(18px + env(safe-area-inset-bottom));
+    display:flex;align-items:center;gap:12px;max-width:min(560px,calc(100vw - 24px));
+    background:var(--panel2);border:1px solid var(--accent);border-radius:14px;
+    padding:12px 14px;box-shadow:0 18px 50px rgba(0,0,0,.55);font-size:13px;color:#dbe6ff}
+  .pwa-toast b{color:#fff}
+  .pwa-toast .pt-reload{flex:0 0 auto;font-family:inherit;font-size:12.5px;font-weight:800;
+    color:#06122a;background:var(--grad);border:0;border-radius:9px;padding:9px 14px;cursor:pointer;min-height:44px}
+  .pwa-toast .pt-x{flex:0 0 auto;width:30px;height:30px;min-height:30px;line-height:1;background:transparent;
+    border:0;color:var(--sub);font-size:20px;font-weight:700;cursor:pointer;border-radius:8px;
+    display:flex;align-items:center;justify-content:center;padding:0}
+  .pwa-toast .pt-x:hover{color:var(--ink);background:rgba(232,237,255,.08)}
+  @media(prefers-reduced-motion:no-preference){
+    @keyframes toastin{from{opacity:0;transform:translate(-50%,12px)}to{opacity:1;transform:translate(-50%,0)}}
+    .pwa-toast{animation:toastin .25s ease}
+  }
+
+  /* 🖨 印刷/PDF保存ボタン（画面表示用。印刷時は @media print 側で非表示にする）。
+     インライン onclick は使わず addEventListener で window.print() を呼ぶ（CSP/方針順守）。 */
+  .printbtn{font-family:inherit;font-size:12.5px;font-weight:800;color:var(--ink);
+    background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:8px 14px;cursor:pointer}
+  .printbtn:hover{border-color:var(--accent);filter:brightness(1.06)}
+
+  /* ===== Batch6：@media print（背景白・文字黒の配布/PDF向けレイアウト） =====
+     画面はダークだが、印刷は白地・黒字でインク節約＋可読性を最優先。
+     trust の details を強制展開し「前提・限界」が紙面に必ず残るようにする（誠実さの担保）。 */
+  @media print{
+    /* 全体を白地・黒字に。影・発光・グラデは紙で潰れるため無効化。 */
+    html,body{background:#fff !important;color:#000 !important}
+    body{font-size:12pt;line-height:1.5}
+    .wrap{max-width:none;margin:0;padding:12mm 10mm}
+    *{box-shadow:none !important;text-shadow:none !important;filter:none !important;
+      -webkit-print-color-adjust:exact;print-color-adjust:exact}
+    /* ヘッダは枠線付きの白地に。診断結果である旨＋目安である注記を擬似要素で印字。 */
+    header.hero{background:#fff !important;color:#000 !important;border:1.5px solid #000;
+      border-radius:8px;padding:14px 16px}
+    header.hero h1{color:#000}
+    header.hero p{color:#222;opacity:1}
+    header.hero p b{color:#000}
+    header.hero::before{content:"診断結果（印刷）";display:block;font-size:10pt;font-weight:700;
+      color:#444;margin-bottom:4px;letter-spacing:.04em}
+    header.hero::after{content:"※ 表示の数値は本ツール推定の目安であり、実在のオファー額・保証値ではありません。";
+      display:block;font-size:9pt;color:#444;margin-top:8px;line-height:1.4}
+    /* カードは白地・黒字・黒枠に統一。グリッドは縦積みにして紙幅に収める。 */
+    .grid{display:block}
+    .card,.card.hero-result{background:#fff !important;border:1px solid #000 !important;
+      border-radius:8px;padding:12px 14px;margin:0 0 10px;break-inside:avoid}
+    .card h2,.card h2::before{color:#000 !important}
+    .card h2::before{background:#000 !important}
+    /* 大きな年収数字も黒で（グラデ文字は印刷で消えるため塗りを黒に戻す） */
+    .bigfig{background:none !important;-webkit-text-fill-color:#000 !important;color:#000 !important}
+    .bigfig .unit{color:#000}
+    .headline .sub,.hint,.estimate-note,.barlabels,.markrow,.benchnote{color:#222 !important}
+    /* 補助テキストの強調色も黒系に寄せる（accent2 緑などは薄く飛ぶため） */
+    .rangeval,.ssum-add,.up,.nm-amt,.tb-amt,.cd-amt,.ar-val{color:#000 !important}
+    table,th,td{color:#000 !important;border-color:#888 !important}
+    th{color:#000 !important}
+    .pill{border:1px solid #000;color:#000 !important;background:#fff !important}
+    .src-badge{border:1px solid #888;color:#000 !important;background:#fff !important}
+    .tmark{color:#000 !important}
+    /* trust パネルは details[open] 相当に強制展開し、本文を必ず印字（details.trust[open] と同等の display:block）。 */
+    details.trust{display:block !important;background:#fff !important;border:1px solid #000 !important}
+    details.trust>*{display:revert !important}
+    details.trust summary{list-style:none;color:#000 !important}
+    details.trust summary::marker,details.trust summary::-webkit-details-marker{display:none}
+    .summary-key{color:#000 !important}
+    .trust h3{color:#000 !important}
+    .trust p,.trust li,.composenote,.howto-moved{color:#222 !important}
+    .composerow .cl-fill{background:#000 !important}
+    /* 入力スライダー/セレクト・操作系・footer・トースト等は紙面に不要なので非表示。 */
+    input[type=range],select,.chips,.actions,.printbtn,.skip-link,
+    .pwa-toast,.src-pop,details.jobdisclose,.job-link,footer,#err{display:none !important}
+    /* 入力カード（プロフィール）自体も省く：結果が主役の配布物にする。 */
+    .grid>.card:not(.hero-result){display:none !important}
+    /* リンクは黒の下線テキストに */
+    a{color:#000 !important;text-decoration:underline}
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
+<a href="#main" class="skip-link">本文（診断ツール）へスキップ</a>
+<main class="wrap" id="main">
   <header class="hero">
     <h1>AI / データサイエンス 転職ナビ</h1>
     <p>スキルと経験から想定年収レンジ＋相性の良い転職先を診断（日本国内）。<b>盛らない／全数字に出典バッジ／入力は端末内だけ・送信ゼロ。</b></p>
   </header>
 
-  <div id="err">⚠️ data.js を読み込めませんでした。index.html と同じフォルダに data.js があるか確認してください。</div>
+  <div id="err" role="alert"><span aria-hidden="true">⚠️</span> data.js を読み込めませんでした。index.html と同じフォルダに data.js があるか確認してください。</div>
 
   <div class="fresh" id="fresh">
     <span class="dot"></span>
     <span class="upd">データ最終更新：<b id="lastupd">—</b><span id="agehint"></span></span>
+    <span class="market" id="market"></span>
     <span class="howto">更新するには Claude Code に <code>AI転職ナビのデータ更新して</code> と依頼</span>
   </div>
 
   <div class="grid">
     <!-- INPUT -->
-    <div class="card">
-      <h2>あなたのプロフィール</h2>
-      <label class="fld rangelabel" for="exp">実務経験年数（AI/データ分析）<span class="rangeval" id="expv">7年</span></label>
+    <div class="card" role="region" aria-labelledby="input-h2">
+      <h2 id="input-h2">あなたのプロフィール</h2>
+      <label class="fld rangelabel" for="exp">実務経験年数（AI/データ分析）<span class="rangeval" id="expv" aria-hidden="true">7年</span></label>
       <input type="range" id="exp" min="0" max="20" value="7" aria-label="実務経験年数（AI/データ分析）" aria-valuetext="7年">
 
       <label class="fld" for="role">現在の職種・立ち位置</label>
@@ -245,8 +533,12 @@
         <option value="adjacent">隣接職（SE・企画など）からの挑戦</option>
       </select>
 
-      <label class="fld" id="skills-label">スキル・強み（当てはまるものをタップ・複数選択可）</label>
+      <div class="fld" id="skills-label">スキル・強み（当てはまるものをタップ・複数選択可）</div>
       <div class="chips" id="skills" role="group" aria-labelledby="skills-label"></div>
+      <!-- 選択中の個数・加点合計の動的サマリ（premCap 到達で頭打ちを明示） -->
+      <div class="skillsum" id="skillsum" role="status" aria-live="polite"></div>
+      <!-- 加点根拠（groundingNote）を辿れるよう relacom/relasic バッジ付きで開示 -->
+      <div class="hint groundinghint" id="groundinghint"></div>
       <div class="hint">※加点幅は「本ツール推定」です。下部「データの信頼性について」を必ずご確認ください。</div>
 
       <label class="fld" for="pref">転職の志向</label>
@@ -257,47 +549,88 @@
         <option value="growth">成長環境・裁量・SO志向</option>
       </select>
 
+      <!-- Batch5-1：現年収（任意）。入力すると結果に差分行を出す。未入力なら何も出さない（盛らない）。 -->
+      <label class="fld" for="current">現在の年収（任意・差分を出すため）</label>
+      <select id="current" aria-label="現在の年収（任意）"></select>
+      <div class="hint">※端末内だけで比較に使います（送信なし）。本ツール想定式との比較です。</div>
+
+      <!-- Batch5-6：目標年収（任意）。設定すると到達ルートを逆算表示。 -->
+      <label class="fld" for="target">目標年収（任意・到達ルートを逆算）</label>
+      <select id="target" aria-label="目標年収（任意）"></select>
+
       <div class="disc">
         本診断は公開市場データに基づく<strong>目安の試算</strong>です。最も目立つ年収額は「実在の平均値」を「本ツールの計算式（推定）」で加工したもので、個別オファーを保証する値ではありません。
       </div>
     </div>
 
     <!-- RESULTS -->
-    <div class="resultcol">
-      <!-- 信頼度ラダー（バッジの色・記号を解読するための常設凡例） -->
-      <div class="trust-ladder" id="ladder" aria-label="信頼区分の凡例（信頼の高い順）"></div>
+    <div class="resultcol" role="region" aria-label="診断結果">
+      <div id="sr-summary" aria-live="polite" class="sr-only"></div>
       <div class="card hero-result">
         <h2>想定年収レンジ <span class="src-badge" id="badge-model"></span></h2>
         <div class="headline" aria-live="polite" aria-atomic="true">
           <span class="bigfig" id="salmid">—</span>
           <span class="sub" id="salrange">—</span>
         </div>
-        <div class="estimate-note">この額は<b>実在の市場平均</b>を<b>本ツールの推定式</b>で加工した目安です（実測値ではありません）。各数値の出典・信頼区分はバッジから確認できます。</div>
+        <!-- 推定開示の集約：1行サマリで「実在平均×本ツール推定式の目安（実測でない）」を要約し、
+             下の初期例ノートと視覚的に1ブロック統合（estimate-cluster）。詳細な限界は trust パネルへ。 -->
+        <div class="estimate-cluster">
+          <div class="estimate-note">実在市場平均×<b>本ツール推定式</b>の目安（実測でない）→詳細はバッジ／下部の信頼性パネル</div>
+          <div class="examplenote" id="examplenote">※ これは「経験7年・生成AI職・主要スキル4つ」を仮置きした<b>初期例</b>です。左の入力をあなたの状況に変えてください。</div>
+        </div>
         <div class="diffnote" id="diffnote" style="display:none"></div>
-        <div class="examplenote" id="examplenote">※ これは「経験7年・生成AI職・主要スキル4つ」を仮置きした<b>初期例</b>です。左の入力をあなたの状況に変えてください。</div>
+        <!-- Batch5-1：現年収比の差分行（現年収未入力なら非表示） -->
+        <div class="currentdiff" id="currentdiff" style="display:none"></div>
+        <!-- Batch5-6：目標年収への逆算（目標未設定なら非表示） -->
+        <div class="targetbox" id="targetbox" style="display:none"></div>
         <div class="bar">
           <div class="fill" id="fill" style="left:20%;width:30%" aria-hidden="true"></div>
           <div id="benchticks" aria-hidden="true"></div>
           <div class="midmark" id="midmark" style="left:50%" aria-hidden="true"></div>
           <div class="scale" id="scale" aria-hidden="true"></div>
         </div>
-        <div class="markrow"><span>単位：万円。帯＝想定レンジ／<b style="color:var(--ink)">▼</b>＝あなたの中央値／縦線＝職種別の市場平均</span><span id="posnote"></span></div>
+        <div class="markrow">
+          <span class="legend" aria-hidden="true">
+            単位：万円。
+            <span class="lg"><span class="lg-band"></span>想定レンジ</span>
+            <span class="lg"><span class="lg-tri">▼</span>あなたの中央値</span>
+            <span class="lg"><span class="lg-line"></span>職種別の市場平均</span>
+          </span>
+          <span id="posnote"></span>
+        </div>
+        <div class="barlabels" id="barlabels" aria-hidden="true"></div>
+        <div class="agerange" id="agerange"></div>
         <div class="hint" id="gapline" style="margin-top:10px"></div>
         <div class="hint" id="benchline" style="margin-top:6px"></div>
         <div class="actions">
-          <button type="button" id="btn-copy" class="act">📋 結果をコピー</button>
-          <button type="button" id="btn-reset" class="act ghost">↺ リセット</button>
+          <button type="button" id="btn-copy" class="act"><span aria-hidden="true">🔗</span> この診断結果を共有/保存（リンク生成・送信なし）</button>
+          <button type="button" id="btn-print" class="printbtn"><span aria-hidden="true">🖨</span> 印刷/PDF保存</button>
+          <button type="button" id="btn-reset" class="act ghost"><span aria-hidden="true">↺</span> リセット</button>
           <span class="act-msg" id="actmsg" role="status" aria-live="polite"></span>
         </div>
+        <div class="hint sharehint"><span aria-hidden="true">🔒</span> ※共有リンクには入力条件だけが含まれ、サーバーには送信されません（リンクを開いた相手の画面で同じ条件が再現されるだけ）。</div>
       </div>
+
+      <!-- 信頼度ラダー（バッジの色・記号を解読するための常設凡例）。
+           視線の最初が必ず大きな年収数字になるよう、年収カードの後ろ（企業テーブル直上）へ配置。 -->
+      <div class="trust-ladder" id="ladder" aria-label="信頼区分の凡例（信頼の高い順）"></div>
 
       <div class="card">
         <h2>相性の良い転職先タイプ（年収順）</h2>
         <table>
-          <thead><tr><th>企業タイプ</th><th>市場レンジ</th><th>あなたの想定</th><th>相性</th></tr></thead>
+          <thead><tr><th scope="col">企業タイプ</th><th scope="col">市場レンジ</th><th scope="col">あなたの想定</th><th scope="col">相性</th><th scope="col">次の一歩</th></tr></thead>
           <tbody id="companies"></tbody>
         </table>
         <div class="hint" style="margin-top:8px">「市場レンジ」は出典つきの実在情報、「あなたの想定」は本ツール推定です。バッジにカーソルを乗せると出典・時点・信頼区分が出ます。</div>
+        <!-- Batch5-2：求人検索リンクの透明性開示（リンク先に何が渡るか） -->
+        <details class="jobdisclose">
+          <summary>「求人を探す」リンクは何を渡しますか？（送信なしの透明性）</summary>
+          <div class="jd-body">
+            ボタンを押すと、選んだ転職サイトの<b>検索ページ</b>を新規タブで開くだけです（あなたの情報を自動送信はしません）。
+            検索キーワードには「<span id="jobquery-sample"></span>」のように、<b>職種ラベル＋選択スキルの日本語＋年収◯万以上</b>を組み立てて URL に載せます。
+            開く前に確認できるよう、ここに渡す中身を明示しています。
+          </div>
+        </details>
       </div>
 
       <div class="card">
@@ -305,23 +638,45 @@
         <div id="recs"></div>
         <div class="hint" id="hotskills" style="margin-top:10px"></div>
       </div>
+
+      <!-- Batch5-4：活動側の打ち手（志向別・今すぐ効く） -->
+      <div class="card">
+        <h2>活動の打ち手（今すぐ効く） <span class="src-badge" id="badge-actionmoves"></span></h2>
+        <div class="hint" style="margin-bottom:8px">スキルは中長期、<b style="color:#dbe6ff">活動は今すぐ効く</b>。あなたの志向「<span id="actionpref"></span>」に合わせた動き方です。</div>
+        <div id="actionmoves"></div>
+      </div>
+
+      <!-- Batch5-5：キャリア年収カーブ外挿（SVG・依存ゼロ） -->
+      <div class="card">
+        <h2>この先の年収カーブ（試算） <span class="src-badge" id="badge-curve"></span></h2>
+        <div class="hint" style="margin-bottom:8px">いまの経験 <b id="curve-from" style="color:#dbe6ff">—</b> 年を起点に、<b style="color:#dbe6ff">今後7年</b>の想定中央値を外挿した<b>本ツール推定</b>です（実測の昇給予測ではありません）。</div>
+        <div id="curve"></div>
+        <div class="curvelegend" id="curvelegend"></div>
+      </div>
     </div>
   </div>
 
   <!-- TRUST / METHODOLOGY -->
   <details class="trust" id="trust">
-    <summary>📊 データの信頼性について（必ずお読みください）</summary>
+    <summary>
+      <span aria-hidden="true">📊</span> データの信頼性について（必ずお読みください）
+      <span class="summary-key">この額は推定です。agency 出典は高め・実オファーは交渉で変動</span>
+    </summary>
     <h3>信頼区分の5段階</h3>
     <div id="tierdefs"></div>
+    <h3>この診断の出典構成</h3>
+    <div id="tiercompose"></div>
+    <p class="composenote">実在数値の出典は <b>agency（転職メディアの集計・解説）</b>中心です。official / posting は各1件のため、<b>一次性の高い出典（公式統計・実求人）の拡充が今後の課題</b>です。盛らず正直に開示します。</p>
     <h3>この診断の限界</h3>
     <ul>
       <li>表示される年収額は、<b>実在の平均値</b>を<b>本ツールが設計した計算式（＝tier:本ツール推定）</b>で加工したものです。計算式の重み（スキル加点%など）は実測ではなく、公開求人の傾向からの概算です。</li>
-      <li>職種「平均」は調査ごとに時点・手法・対象が異なります（例：同じAIエンジニアでも558万〜628.9万と出典で差）。点ではなく幅で捉えてください。</li>
+      <li id="lim-bench">職種「平均」は調査ごとに時点・手法・対象が異なります。点ではなく幅で捉えてください。</li>
       <li>エージェント記事の数値は集客目的でやや高めに出る傾向があります。tier バッジで区別しています。</li>
       <li>実際のオファーは面接評価・採用枠・タイミング・個別交渉で大きく上下します。</li>
     </ul>
     <h3>最新性について</h3>
     <p id="freshdesc"></p>
+    <p class="howto-moved">運用者向け：このデータを<b>更新するには</b> Claude Code に <code>AI転職ナビのデータ更新して</code> と依頼してください（手順は同フォルダの UPDATE.md）。</p>
     <h3>出典一覧</h3>
     <ul class="srclist" id="srclist"></ul>
   </details>
@@ -329,7 +684,7 @@
   <footer>
     AI/データサイエンス転職ナビ &middot; 完全ローカル動作・データ送信なし &middot; 数値は data.js の出典に基づく目安です
   </footer>
-</div>
+</main>
 
 <script src="data.js"></script>
 <script>
@@ -340,10 +695,34 @@ const fmt = n=>Math.round(n).toLocaleString('ja-JP');
 // 月次自動更新は WebSearch 結果を data.js に書き込むため、人手レビューを抜けた文字列混入経路が実在する（防御）。
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const safeUrl = u => /^https?:\/\//i.test(String(u||'')) ? String(u) : '#';
+// 出典日付の粒度を明示する。年のみ（"2026"）なら「2026年(月不明)」、年月（"2026-05"）なら「2026年5月」、
+// 年月日（"2026-05-31"）なら「2026年5月31日」。盛らない＝粒度を隠さず正直に出す。
+function fmtSrcDate(raw){
+  const s=String(raw==null?'':raw).trim();
+  let m;
+  if((m=/^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(s))) return `${m[1]}年${+m[2]}月${+m[3]}日`;
+  if((m=/^(\d{4})-(\d{1,2})$/.exec(s)))            return `${m[1]}年${+m[2]}月`;
+  if((m=/^(\d{4})$/.exec(s)))                      return `${m[1]}年(月不明)`;
+  return s;   // 想定外の形式はそのまま（esc は呼び出し側で）
+}
 
 function daysSince(iso){
   const then=new Date(iso+"T00:00:00"); const now=new Date();
   return Math.floor((now-then)/86400000);
+}
+// オフライン表示：navigator.onLine に応じて freshness バナーの文言・色を切替える。
+// オフラインは「エラー」ではなく仕様内の状態なので中立色（赤は使わない）。
+function updateOnlineState(){
+  const fresh=$('fresh'), note=$('agehint');
+  if(!fresh) return;
+  if(navigator.onLine===false){
+    fresh.classList.add('offline');
+    if(note){ note._savedHTML = note._savedHTML!=null ? note._savedHTML : note.innerHTML;
+      note.innerHTML=' <span class="offlinenote">／オフライン（保存済みデータで表示中）</span>'; }
+  } else {
+    fresh.classList.remove('offline');
+    if(note && note._savedHTML!=null){ note.innerHTML=note._savedHTML; note._savedHTML=null; }
+  }
 }
 // 色に頼らない形の符号（色覚多様性対応）。色は補強、形が主の識別子。
 function tierMark(t){ return `<span class="tmark" aria-hidden="true" style="color:${t.color}">${t.glyph||'•'}</span>`; }
@@ -359,22 +738,96 @@ function tierBadgeInline(tierKey,date){
   return `<button type="button" class="src-badge" data-tier="${esc(tierKey)}" aria-haspopup="dialog" aria-expanded="false" aria-label="${esc(t.label)}。説明を開く" title="${esc(t.label)}：${esc(t.desc)}／タップで詳細">${tierMark(t)}${esc(t.label)}${date?`<span class="tdate">${esc(date)}</span>`:''}</button>`;
 }
 
-const sel = {exp:7, role:'genai', pref:'balance', skills:new Set()};
+const sel = {exp:7, role:'genai', pref:'balance', skills:new Set(), current:'', target:''};
 let touched = false;        // ユーザーが入力を操作したか（初期例ラベルの表示制御）
 let prevMid=null, prevPrem=null;  // 変化フィードバック用の前回値
 
-// スキルチップの状態を data-on / aria-pressed / sel.skills の3つで同期
+/* ===== Batch5：現年収レンジ select の選択肢（万円・中央値で差分計算） =====
+   「答えたくない」は空値。任意入力なので未選択時は差分行を一切出さない（盛らない）。 */
+const CURRENT_OPTS = [
+  {v:'',     label:'答えたくない / 未入力'},
+  {v:'300',  label:'〜350万',   mid:300},
+  {v:'400',  label:'350〜450万', mid:400},
+  {v:'500',  label:'450〜550万', mid:500},
+  {v:'600',  label:'550〜650万', mid:600},
+  {v:'700',  label:'650〜750万', mid:700},
+  {v:'800',  label:'750〜850万', mid:800},
+  {v:'900',  label:'850〜950万', mid:900},
+  {v:'1000', label:'950〜1100万', mid:1000},
+  {v:'1200', label:'1100万以上', mid:1200}
+];
+const currentMid = ()=>{ const o=CURRENT_OPTS.find(o=>o.v===sel.current); return o&&o.mid?o.mid:null; };
+
+/* ===== Batch5：目標年収の選択肢（逆算用・万円） ===== */
+const TARGET_OPTS = [
+  {v:'',     label:'設定しない'},
+  {v:'600',  label:'600万'},
+  {v:'700',  label:'700万'},
+  {v:'800',  label:'800万'},
+  {v:'900',  label:'900万'},
+  {v:'1000', label:'1000万'},
+  {v:'1200', label:'1200万'},
+  {v:'1400', label:'1400万'},
+  {v:'1600', label:'1600万'}
+];
+const targetVal = ()=>{ const n=parseInt(sel.target,10); return Number.isFinite(n)&&n>0?n:null; };
+
+/* ===== Batch5：求人検索リンクの宛先（送信ではなく検索URLを新規タブで開くだけ） =====
+   各サイトの公開検索クエリを URLSearchParams で組み立てる。何が渡るかは hint で開示。 */
+const searchTargets = [
+  {id:'green',  name:'Green',      build:(q)=>'https://www.green-japan.com/search?'+new URLSearchParams({keyword:q})},
+  {id:'wantedly',name:'Wantedly', build:(q)=>'https://www.wantedly.com/projects?'+new URLSearchParams({q})},
+  {id:'doda',   name:'doda',       build:(q)=>'https://doda.jp/DodaFront/View/JobSearchList/j_ki__'+encodeURIComponent(q)+'/'},
+  {id:'indeed', name:'Indeed',     build:(q)=>'https://jp.indeed.com/jobs?'+new URLSearchParams({q})}
+];
+
+/* ===== Batch5：活動側の打ち手（志向別に出し分け・静的） =====
+   「スキルは中長期・活動は今すぐ効く」。各打ち手に「なぜ効くか」1行。 */
+const actionMoves = {
+  salary: [
+    {t:'複数社を同時並走で応募', why:'内定を同時期に揃えると、提示額の比較材料ができて交渉力が上がる'},
+    {t:'希望年収は提示レンジ上限+1割で起票', why:'交渉の初期値が高いほど着地も上がりやすい（下振れの保険）'},
+    {t:'現年収と他社オファーを材料に逆指名交渉', why:'市場価値の客観的な裏付けがあると増額提示を引き出しやすい'}
+  ],
+  stable: [
+    {t:'社内グレード/等級の昇格要件を確認', why:'転職せずとも到達できる増分を先に把握すると意思決定が早い'},
+    {t:'市場価値を年1回はスカウト経由で棚卸し', why:'動かなくても「外の相場」を知ると交渉・残留判断の精度が上がる'},
+    {t:'実績を社内外で可視化（登壇・社内表彰）', why:'評価の根拠が増えると安定環境内でも昇給余地が広がる'}
+  ],
+  growth: [
+    {t:'裁量の大きいフェーズ（シード〜シリーズB）を狙う', why:'責任範囲が広いほど経験密度が高く、次の市場価値が伸びる'},
+    {t:'SO（ストックオプション）条件を必ず確認', why:'現金以外の期待値を含めると総報酬の見え方が変わる'},
+    {t:'技術的に尖った案件を1件作って公開', why:'再現性のある実績は成長環境の選考で最も効く差別化要素'}
+  ],
+  balance: [
+    {t:'現職の市場価値をスカウト経由で年次チェック', why:'動く/残るの判断材料になり、交渉の地盤にもなる'},
+    {t:'年収と裁量の両軸でオファーを点数化して比較', why:'片方に引っ張られず、納得感のある意思決定ができる'},
+    {t:'応募は2〜3社に絞り深く準備', why:'数を絞ると各社の選考準備に厚みが出て通過率と提示額が上がる'}
+  ]
+};
+// 求人検索クエリの組立（職種ラベル＋選択スキルの日本語＋年収下限）。
+function jobQuery(minMan){
+  const skillWords=[...sel.skills].map(k=>skillMeta[k]?skillMeta[k].label.replace(/[／/].*$/,'').replace(/[（(].*$/,''):'').filter(Boolean).slice(0,2);
+  const parts=[roleLabel[sel.role]||'AIエンジニア', ...skillWords];
+  if(minMan) parts.push(`年収${minMan}万以上`);
+  return parts.join(' ');
+}
+
+// スキルチップの状態を data-on / aria-checked / sel.skills の3つで同期
+// （role=checkbox なので選択状態は aria-checked を正とする）
 function setChip(c,on){
   c.dataset.on = on?'1':'0';
-  c.setAttribute('aria-pressed', on?'true':'false');
+  c.setAttribute('aria-checked', on?'true':'false');
   on ? sel.skills.add(c.dataset.k) : sel.skills.delete(c.dataset.k);
 }
-function toggleChip(c){ setChip(c, c.getAttribute('aria-pressed')!=='true'); touched=true; render(); }
+function toggleChip(c){ setChip(c, c.getAttribute('aria-checked')!=='true'); touched=true; render(); }
 
 /* ===== P2-4 共有・保存（URLハッシュ / クリップボード / localStorage。すべて端末内で完結・外部送信なし） ===== */
 const SKILL_KEYS = ()=>Object.keys(D.model.skillPrem);
 function writeHash(){
-  const h=`exp=${sel.exp}&role=${sel.role}&pref=${sel.pref}&sk=${[...sel.skills].join(',')}`;
+  let h=`exp=${sel.exp}&role=${sel.role}&pref=${sel.pref}&sk=${[...sel.skills].join(',')}`;
+  if(sel.current) h+=`&cur=${sel.current}`;     // 現年収（任意）
+  if(sel.target)  h+=`&tgt=${sel.target}`;      // 目標年収（任意）
   history.replaceState(null,'','#'+h);   // replaceState なので履歴を汚さない
 }
 function applyHash(){
@@ -384,33 +837,54 @@ function applyHash(){
   if(p.has('role') && D.model.roleMul[p.get('role')]) sel.role=p.get('role');
   if(p.has('pref') && prefLabel[p.get('pref')]) sel.pref=p.get('pref');
   if(p.has('sk')) sel.skills=new Set(p.get('sk').split(',').filter(k=>SKILL_KEYS().includes(k)));
+  // 現年収・目標は許容値リストに一致するものだけ採用（不正値は無視＝壊さない）
+  if(p.has('cur')){ const v=p.get('cur'); sel.current=CURRENT_OPTS.some(o=>o.v===v)?v:''; }
+  if(p.has('tgt')){ const v=p.get('tgt'); sel.target=TARGET_OPTS.some(o=>o.v===v)?v:''; }
   return true;
 }
 function syncUIFromSel(){
   $('exp').value=sel.exp; $('expv').textContent=sel.exp+(sel.exp>=20?'年+':'年');
   $('exp').setAttribute('aria-valuetext', sel.exp>=20?'20年以上':sel.exp+'年');
   $('role').value=sel.role; $('pref').value=sel.pref;
+  if($('current')) $('current').value=sel.current;
+  if($('target'))  $('target').value=sel.target;
   document.querySelectorAll('#skills .chip').forEach(c=>setChip(c, sel.skills.has(c.dataset.k)));
 }
-function flashMsg(m){ $('actmsg').textContent=m; clearTimeout(flashMsg._t); flashMsg._t=setTimeout(()=>{$('actmsg').textContent='';},2600); }
+function flashMsg(m){
+  const el=$('actmsg');
+  el.textContent=m;
+  // 成功時は一時ピル背景で軽く強調（reduced-motion は CSS 側で animation を無効化）。
+  el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+  clearTimeout(flashMsg._t);
+  flashMsg._t=setTimeout(()=>{ el.textContent=''; el.classList.remove('show'); },2600);
+}
 function copyResult(){
   const {lo,mid,hi}=personalRange();
   const skills=[...sel.skills].map(k=>skillMeta[k].label).join('、')||'なし';
+  // 現年収を入力していれば差分も1行含める（未入力なら何も足さない＝盛らない）。
+  const cm=currentMid();
+  let diffLine='';
+  if(cm){
+    const d=Math.round(mid-cm), pct=Math.round((mid-cm)/cm*100);
+    diffLine=`\n現年収比：${d>=0?'+':''}${fmt(d)}万（${pct>=0?'+':''}${pct}%・本ツール想定式との比較）`;
+  }
   const text=`【AI転職ナビ 診断結果｜本ツール推定】
 想定年収 中央 ${fmt(mid)}万円（レンジ ${fmt(lo)}〜${fmt(hi)}万）
 条件：経験${sel.exp}年 / ${roleLabel[sel.role]} / 志向：${prefLabel[sel.pref]}
-スキル：${skills}
+スキル：${skills}${diffLine}
 ※実在の市場平均を本ツールの推定式で加工した目安。実測値ではありません。
 ${location.href}`;
   (navigator.clipboard?navigator.clipboard.writeText(text):Promise.reject())
-    .then(()=>flashMsg('コピーしました（共有リンク込み）'))
+    .then(()=>flashMsg('共有リンク込みでコピーしました（送信なし）'))
     .catch(()=>flashMsg('コピーできませんでした'));
 }
 function resetAll(){
   sel.exp=7; sel.role='genai'; sel.pref='balance'; sel.skills=new Set();
+  sel.current=''; sel.target='';   // Batch5：現年収・目標もクリア
   document.querySelectorAll('#skills .chip').forEach(c=>setChip(c,false));
   ['genai','biz','comm','agent'].forEach(k=>{const c=document.querySelector(`#skills .chip[data-k="${k}"]`);if(c)setChip(c,true);});
   syncUIFromSel(); touched=false;
+  try{ localStorage.removeItem('acn_current'); localStorage.removeItem('acn_target'); }catch(e){}
   history.replaceState(null,'',location.pathname+location.search);
   render(); flashMsg('初期状態に戻しました');
 }
@@ -451,62 +925,147 @@ function skillWeight(k){
   return w;
 }
 
+// rAF デバウンス：スライダーのドラッグ連続発火で render() が毎フレーム全再構築するのを抑える。
+// requestAnimationFrame でコアレスし、1フレームにつき高々1回だけ render を走らせる。
+// requestAnimationFrame 非対応環境（極稀）でも壊れないよう即時実行にフォールバック。
+let _renderRaf=null;
+function scheduleRender(){
+  if(typeof requestAnimationFrame!=='function'){ render(); return; }
+  if(_renderRaf!=null) return;   // 既に次フレーム予約済みなら束ねる
+  _renderRaf=requestAnimationFrame(()=>{ _renderRaf=null; render(); });
+}
+
+// 出典構成（tier別件数バー）。sources を tier ごとに数え、model.tier(=tool) も1件として加える。
+// 信頼の高い順（rank）に並べ、件数が0でも行は出す（official/posting が薄いことを隠さない）。
+function renderTierCompose(tiersByRank){
+  const el=$('tiercompose'); if(!el) return;
+  const cnt={};
+  for(const k of Object.keys(D.tiers)) cnt[k]=0;
+  for(const s of Object.values(D.sources||{})) if(s && s.tier in cnt) cnt[s.tier]++;
+  if(D.model && D.model.tier in cnt) cnt[D.model.tier]++;   // 推定ロジック自体も1件
+  const max=Math.max(1, ...Object.values(cnt));
+  el.innerHTML=tiersByRank.map(t=>{
+    const key=Object.keys(D.tiers).find(k=>D.tiers[k]===t);
+    const n=cnt[key]||0;
+    const w=Math.round(n/max*100);
+    return `<div class="composerow">`
+      +`<span class="cl-label">${tierMark(t)}${esc(t.label)}</span>`
+      +`<span class="cl-track"><span class="cl-fill" style="width:${w}%;background:${esc(t.color)}"></span></span>`
+      +`<span class="cl-cnt">${n}件</span></div>`;
+  }).join('');
+}
+
 function boot(){
   // freshness
   const age=daysSince(D.meta.last_updated);
   $('lastupd').textContent=D.meta.last_updated+`（${age}日前）`;
+  // meta.market / meta.note を表示（hero 文の「日本国内」ハードコードと二重管理を解消）
+  if(D.meta.market) $('market').innerHTML='対象市場：<b>'+esc(D.meta.market)+'</b>';
   if(age>D.meta.stale_after_days){
     $('fresh').classList.add('stale');
     $('agehint').innerHTML=` <span class="stalewarn">／${D.meta.stale_after_days}日超：要更新</span>`;
   }
   $('badge-model').innerHTML='';
   $('badge-model').outerHTML=tierBadgeInline('tool');
+  // Batch5：活動の打ち手・年収カーブも「本ツール推定」明示バッジを付ける（実測でないことを誠実に開示）。
+  if($('badge-actionmoves')){ $('badge-actionmoves').outerHTML=tierBadgeInline('tool'); }
+  if($('badge-curve')){ $('badge-curve').outerHTML=tierBadgeInline('tool'); }
 
-  // skill chips from model.skillPrem（role=button・キーボード操作・aria-pressed 対応）
+  // skill chips from model.skillPrem（role=checkbox・キーボード操作・aria-checked 対応）。
+  // 複数選択の意味を SR に正確に伝えるため checkbox を採用。加点 +% は aria-label に一本化し、
+  // 可視の <small>+%</small> は aria-hidden で二重読みを防ぐ。
   $('skills').innerHTML=Object.keys(D.model.skillPrem).map(k=>{
     const pct=Math.round(D.model.skillPrem[k]*100);
-    return `<span class="chip" role="button" tabindex="0" aria-pressed="false" data-k="${k}" aria-label="${skillMeta[k].label}（年収加点 プラス${pct}パーセント・本ツール推定）">${skillMeta[k].label} <small>+${pct}%</small></span>`;
+    return `<span class="chip" role="checkbox" tabindex="0" aria-checked="false" data-k="${k}" aria-label="${skillMeta[k].label}（年収加点 プラス${pct}パーセント・本ツール推定）">${skillMeta[k].label} <small aria-hidden="true">+${pct}%</small></span>`;
   }).join('');
   document.querySelectorAll('#skills .chip').forEach(c=>{
     c.addEventListener('click',()=>toggleChip(c));
     c.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){ e.preventDefault(); toggleChip(c); } });
   });
   ['genai','biz','comm','agent'].forEach(k=>{const c=document.querySelector(`#skills .chip[data-k="${k}"]`);if(c) setChip(c,true);});
-  // 共有リンク（URLハッシュ）から状態を復元
+
+  // Batch5：現年収・目標年収の select を生成。
+  $('current').innerHTML=CURRENT_OPTS.map(o=>`<option value="${esc(o.v)}">${esc(o.label)}</option>`).join('');
+  $('target').innerHTML=TARGET_OPTS.map(o=>`<option value="${esc(o.v)}">${esc(o.label)}</option>`).join('');
+  // localStorage から前回の現年収・目標を復元（任意入力なので壊さない try/catch 防御）。
+  try{ const cv=localStorage.getItem('acn_current'); if(cv!=null && CURRENT_OPTS.some(o=>o.v===cv)) sel.current=cv; }catch(e){}
+  try{ const tv=localStorage.getItem('acn_target');  if(tv!=null && TARGET_OPTS.some(o=>o.v===tv))  sel.target=tv;  }catch(e){}
+
+  // 共有リンク（URLハッシュ）から状態を復元（ハッシュがあれば localStorage より優先）
   if(applyHash()) touched=true;   // 復元時は初期例ラベルを出さない
   syncUIFromSel();
 
-  $('exp').addEventListener('input',e=>{sel.exp=+e.target.value;$('expv').textContent=sel.exp+(sel.exp>=20?'年+':'年');e.target.setAttribute('aria-valuetext',sel.exp>=20?'20年以上':sel.exp+'年');touched=true;render();});
+  // 経験年数スライダー：ラベル(expv/aria-valuetext)は即時更新で追従性を保ちつつ、
+  // 重い render() は rAF でコアレス（ドラッグ中の毎フレーム全再構築を抑える）。
+  $('exp').addEventListener('input',e=>{sel.exp=+e.target.value;$('expv').textContent=sel.exp+(sel.exp>=20?'年+':'年');e.target.setAttribute('aria-valuetext',sel.exp>=20?'20年以上':sel.exp+'年');touched=true;scheduleRender();});
   $('role').addEventListener('change',e=>{sel.role=e.target.value;touched=true;render();});
   $('pref').addEventListener('change',e=>{sel.pref=e.target.value;touched=true;render();});
+  // Batch5：現年収・目標年収（任意）。localStorage 保存も try/catch 防御。
+  $('current').addEventListener('change',e=>{sel.current=e.target.value;touched=true;try{localStorage.setItem('acn_current',sel.current);}catch(err){}render();});
+  $('target').addEventListener('change',e=>{sel.target=e.target.value;touched=true;try{localStorage.setItem('acn_target',sel.target);}catch(err){}render();});
   $('btn-copy').addEventListener('click',copyResult);
+  // 印刷/PDF保存：インライン onclick は使わず addEventListener で window.print() を呼ぶ（@media print が紙面整形）。
+  if($('btn-print')) $('btn-print').addEventListener('click',()=>{ try{ window.print(); }catch(e){} });
   $('btn-reset').addEventListener('click',resetAll);
 
-  // benchmark line
+  // benchmark line（各ベンチに note を小さく注記）
   $('benchline').innerHTML='参考平均： '+D.benchmarks.map(b=>
-    `${b.role} <b style="color:#dbe6ff">${b.avg}万</b> ${srcBadge(b.srcId)}`).join(' ・ ');
+    `${esc(b.role)} <b style="color:#dbe6ff">${b.avg}万</b> ${srcBadge(b.srcId)}${b.note?`<span class="benchnote">（${esc(b.note)}）</span>`:''}`).join(' ・ ');
+  // trust パネル「この診断の限界」の出典差の例を benchmarks[].note から動的生成
+  // （avg や note が更新されても説明が古くならないように。558万〜628.9万 等のハードコードを排除）
+  const benchExamples=D.benchmarks.filter(b=>b.note).map(b=>`${esc(b.role)} ${b.avg}万（${esc(b.note)}）`);
+  if(benchExamples.length){
+    $('lim-bench').innerHTML=`職種「平均」は調査ごとに時点・手法・対象が異なります。例：${benchExamples.join(' ／ ')}。点ではなく幅で捉えてください。`;
+  }
   // ※ 年収バーの目盛り・市場平均ティックはスケールが入力で動くため render() 内で描画
 
   // hot skills
-  $('hotskills').innerHTML='需要が高いスキル： '+D.hotSkills.list.map(t=>`<span class="tag">${t}</span>`).join('')+' '+srcBadge(D.hotSkills.srcId);
+  $('hotskills').innerHTML='需要が高いスキル： '+D.hotSkills.list.map(t=>`<span class="tag">${esc(t)}</span>`).join('')+' '+srcBadge(D.hotSkills.srcId);
+
+  // スキル加点の根拠（groundingNote）を辿れるよう relacom/relasic バッジ付きで開示。
+  // 根拠ソースは data.js の sources から relacom/relasic を拾う（存在するものだけ）。
+  if(D.model.groundingNote){
+    const gnBadges=['relacom','relasic'].filter(id=>D.sources[id]).map(id=>srcBadge(id)).join(' ');
+    $('groundinghint').innerHTML=`<span aria-hidden="true">📎</span><span>加点の根拠：${esc(D.model.groundingNote)}</span>${gnBadges}`;
+  }
 
   // 信頼度ラダー（結果カラム最上部の常設凡例）— バッジを trust パネルを開かずに解読できるように
   const tiersByRank=Object.values(D.tiers).sort((a,b)=>a.rank-b.rank);
   $('ladder').innerHTML='<span class="ladder-title">信頼度</span><span class="ladder-arrow">高</span>'
-    +tiersByRank.map(t=>`<span class="ladder-item">${tierMark(t)}${t.label}</span>`).join('<span class="ladder-sep">›</span>')
+    +tiersByRank.map(t=>`<span class="ladder-item">${tierMark(t)}${esc(t.label)}</span>`).join('<span class="ladder-sep" aria-hidden="true">›</span>')
     +'<span class="ladder-arrow">低</span>';
 
   // trust panel（信頼の高い順に並べる）
   $('tierdefs').innerHTML=tiersByRank.map(t=>
     `<div class="tierline">${tierMark(t)}<b>${t.label}</b> ${t.desc}</div>`).join('');
-  $('freshdesc').textContent=`現在のデータは ${D.meta.last_updated} 時点。AI分野は変動が速いため、${D.meta.stale_after_days}日を超えると上部バナーに「要更新」が表示されます。更新は data.js を最新の再調査結果で書き換えることで反映されます（手順は UPDATE.md）。`;
+  $('freshdesc').textContent=`現在のデータは ${D.meta.last_updated} 時点（対象市場：${D.meta.market||'—'}）。AI分野は変動が速いため、${D.meta.stale_after_days}日を超えると上部バナーに「要更新」が表示されます。更新は data.js を最新の再調査結果で書き換えることで反映されます（手順は UPDATE.md）。${D.meta.note?'　'+D.meta.note:''}`;
   $('srclist').innerHTML=Object.values(D.sources).map(s=>{
     const t=D.tiers[s.tier];
-    return `<li><span class="src-badge" style="margin-right:6px">${tierMark(t)}${t.label}</span><a href="${s.url}" target="_blank">${s.name}</a>（${s.date}）</li>`;
+    return `<li><span class="src-badge" style="margin-right:6px">${tierMark(t)}${esc(t.label)}</span><a href="${safeUrl(s.url)}" target="_blank" rel="noopener">${esc(s.name)}</a>（${esc(fmtSrcDate(s.date))}）</li>`;
   }).join('');
+
+  // この診断の出典構成（tier別件数バー）。data.js の sources を tier ごとに集計するだけ＝盛らない自己開示。
+  // 順序は tiers の rank（信頼の高い順）に固定。model（tool）の存在も1件として加える。
+  renderTierCompose(tiersByRank);
 
   render();
   showRevisitDiff(personalRange().mid);   // 前回訪問時との差分（localStorage）
+
+  // 初回訪問時のみ trust パネルを open（誠実な前提を最初に必ず一度見せる）。
+  // 2回目以降は既読フラグで畳んだまま。summary の最重要1行は常時可視なので畳んでも前提は伝わる。
+  // localStorage 不可（プライベートブラウズ等）でも例外で本体を止めない（try/catch 防御）。
+  try{
+    const trust=$('trust');
+    if(trust && !localStorage.getItem('acn_seen_trust')){
+      trust.open=true;
+      localStorage.setItem('acn_seen_trust','1');
+    }
+  }catch(e){}
+
+  // オフライン表示：初期反映＋online/offline 購読（赤は使わず中立色で「保存済みデータで表示中」）
+  updateOnlineState();
+  window.addEventListener('online', updateOnlineState);
+  window.addEventListener('offline', updateOnlineState);
 }
 
 // 基準年収カーブは data.js の model.expCurve（[年,中央値] の点列）を単一ソースにする。
@@ -523,18 +1082,245 @@ function baseByExp(y){
   return hi[1];
 }
 function personalRange(){
-  let mid=baseByExp(sel.exp)*D.model.roleMul[sel.role];
-  let prem=0; sel.skills.forEach(k=>prem+=D.model.skillPrem[k]||0);
-  prem=Math.min(prem,D.model.premCap); mid=mid*(1+prem);
+  const base=baseByExp(sel.exp)*D.model.roleMul[sel.role];
+  let premRaw=0; sel.skills.forEach(k=>premRaw+=D.model.skillPrem[k]||0);
+  const prem=Math.min(premRaw,D.model.premCap);   // 実効加点（premCap で頭打ち）
+  const capped = premRaw > D.model.premCap + 1e-9; // 上限に達して切り捨てが起きているか
+  let mid=base*(1+prem);
   let lo=mid*0.82, hi=mid*1.30;
   if(sel.pref==='salary') hi=mid*1.45;
   if(sel.pref==='stable'){hi=mid*1.15;lo=mid*0.9;}
   if(sel.pref==='growth') hi=mid*1.38;
-  return {lo,mid,hi,prem};
+  return {lo,mid,hi,prem,premRaw,capped,base};
 }
+// 経験年数 → ageBands の年代を保守的にマッピング。経験≠年齢のため、若い側に寄せて過大評価を避ける。
+// 実在の出典つきデータ(ageBands)を死蔵させず透明性高く活用する。
+function ageBandForExp(y){
+  const bands=D.ageBands||[];
+  if(!bands.length) return null;
+  // 保守的しきい値：exp 0-4→1番目, 5-11→2番目, 12-19→3番目, 20+→4番目（範囲外は端にクランプ）
+  let idx = y<5 ? 0 : y<12 ? 1 : y<20 ? 2 : 3;
+  idx = Math.min(idx, bands.length-1);
+  return bands[idx];
+}
+function renderAgeRange(mid){
+  const el=$('agerange'); if(!el) return;
+  const b=ageBandForExp(sel.exp);
+  if(!b){ el.innerHTML=''; return; }
+  // あなたの中央値が実測帯の上/中/下か（±ゆとりは取らず素直に判定）
+  let pos, cls;
+  if(mid>b.hi){ pos='実測帯より上'; cls='hi'; }
+  else if(mid<b.lo){ pos='実測帯より下'; cls='lo'; }
+  else { pos='実測帯の中ほど'; cls='mid'; }
+  el.innerHTML=`<span>同年代の実測レンジ（${esc(b.band)}）</span>`
+    +`<span class="ar-val">${b.lo}–${b.hi}万</span> ${srcBadge(b.srcId)}`
+    +`<span class="ar-pos ${cls}">あなたの中央値は${pos}</span>`
+    +`<span class="ar-cav">※経験年数から年代を保守的に推定（経験≠年齢／本ツール推定）。出典は実在の年代別集計です。</span>`;
+}
+// スキル選択の動的サマリ（選択中◯個・加点合計+◯%・premCap 到達で頭打ち明示）。
+function renderSkillSum(prem,premRaw,capped){
+  const el=$('skillsum'); if(!el) return;
+  const n=sel.skills.size;
+  const capPct=Math.round(D.model.premCap*100);
+  if(n===0){
+    el.classList.add('empty');
+    el.textContent='スキル未選択（加点 +0%）。当てはまる強みをタップすると加点されます。';
+    return;
+  }
+  el.classList.remove('empty');
+  if(capped){
+    el.innerHTML=`選択中 <b>${n}個</b>・加点合計 <span class="ssum-add">+${Math.round(prem*100)}%</span>`
+      +`<span class="ssum-cap">（単純合計+${Math.round(premRaw*100)}%は上限+${capPct}%に到達し頭打ち）</span>`;
+  } else {
+    el.innerHTML=`選択中 <b>${n}個</b>・加点合計 <span class="ssum-add">+${Math.round(prem*100)}%</span>`
+      +`<span style="color:#8b96bd">（上限+${capPct}%まで余地あり・本ツール推定）</span>`;
+  }
+}
+/* ===== Batch5-1：現年収比の差分行 =====
+   現年収（レンジ中央値）と本ツール想定中央値の差を提示。
+   未入力なら何も出さない（盛らない）。マイナスは中立色＋「現職が市場より高め」と誠実に。 */
+function renderCurrentDiff(mid){
+  const el=$('currentdiff'); if(!el) return;
+  const cm=currentMid();
+  if(!cm){ el.style.display='none'; el.innerHTML=''; return; }
+  const d=Math.round(mid-cm), pct=Math.round((mid-cm)/cm*100);
+  el.classList.remove('up','down');
+  if(d>=0){
+    el.classList.add('up');
+    el.innerHTML=`現年収比 <span class="cd-amt">+${fmt(d)}万（+${pct}%）</span>`
+      +`<span class="cd-note">＝本ツール想定式（実在平均×推定）との比較。実オファーは交渉・評価で変動します。</span>`;
+  } else {
+    el.classList.add('down');
+    el.innerHTML=`現年収比 <span class="cd-amt">${fmt(d)}万（${pct}%）</span>`
+      +`<span class="cd-note">この職種タイプでは現職が市場より高め。維持か、別の軸（裁量・成長・働き方）で評価を。本ツール想定式との比較です。</span>`;
+  }
+  el.style.display='';
+}
+
+/* ===== Batch5-4：活動の打ち手（志向別・静的）。スキル系より「今すぐ効く」を明示。 ===== */
+function renderActionMoves(){
+  const el=$('actionmoves'); if(!el) return;
+  if($('actionpref')) $('actionpref').textContent=prefLabel[sel.pref]||'';
+  const moves=actionMoves[sel.pref]||actionMoves.balance;
+  el.innerHTML=moves.map((m,i)=>
+    `<div class="amove"><span class="am-ic" aria-hidden="true">${i+1}</span>`
+    +`<div><b>${esc(m.t)}</b><span class="am-why">なぜ効く：${esc(m.why)}</span></div></div>`).join('');
+}
+
+/* ===== Batch5-5：キャリア年収カーブ外挿（依存ゼロの SVG 折れ線） =====
+   exp..exp+7 を baseByExp(y)*roleMul*(1+prem) でループ計算。
+   2本：現スキルのまま（実線）／最大伸びしろ習得（破線・premCap まで貪欲に積む）。
+   baseByExp は連続なので階段は出ない。 */
+function maxReachablePrem(){
+  // 現在の選択に未取得スキルを skillPrem 降順で premCap まで積んだ実効加点。
+  let raw=0; sel.skills.forEach(k=>raw+=D.model.skillPrem[k]||0);
+  const missing=Object.keys(D.model.skillPrem).filter(k=>!sel.skills.has(k))
+    .sort((a,b)=>(D.model.skillPrem[b]||0)-(D.model.skillPrem[a]||0));
+  for(const k of missing){ if(raw>=D.model.premCap) break; raw+=D.model.skillPrem[k]||0; }
+  return Math.min(raw, D.model.premCap);
+}
+function renderCurve(prem){
+  const host=$('curve'); if(!host) return;
+  if($('curve-from')) $('curve-from').textContent=sel.exp;
+  const rm=D.model.roleMul[sel.role]||1;
+  const premMax=maxReachablePrem();
+  const years=[]; for(let i=0;i<=7;i++) years.push(Math.min(20, sel.exp+i));
+  // 同じ年が連続（exp が高くクランプ）しても折れ線が潰れないよう、x はインデックス基準で等間隔に。
+  const now = years.map(y=>baseByExp(y)*rm*(1+prem));
+  const max = years.map(y=>baseByExp(y)*rm*(1+premMax));
+  const allVals=now.concat(max);
+  const vmin=Math.min(...allVals), vmax=Math.max(...allVals);
+  // 描画領域
+  const W=520, H=210, padL=46, padR=14, padT=14, padB=30;
+  const innerW=W-padL-padR, innerH=H-padT-padB;
+  const n=years.length;
+  const x=i=> padL + (n<=1?0:innerW*i/(n-1));
+  const lo=Math.floor(vmin/50)*50, hi=Math.ceil(vmax/50)*50;
+  const span=Math.max(1,hi-lo);
+  const y=v=> padT + innerH*(1-(v-lo)/span);
+  const pts=arr=>arr.map((v,i)=>`${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  // Y 軸グリッド（4分割）
+  let grid='';
+  for(let g=0;g<=4;g++){
+    const v=lo+span*g/4, yy=y(v);
+    grid+=`<line class="curve-grid" x1="${padL}" y1="${yy.toFixed(1)}" x2="${(W-padR).toFixed(1)}" y2="${yy.toFixed(1)}"/>`;
+    grid+=`<text class="curve-txt" x="${padL-6}" y="${(yy+3).toFixed(1)}" text-anchor="end">${Math.round(v)}</text>`;
+  }
+  // X 軸ラベル（経験年・端点と中間のみ間引き表示）
+  let xlab='';
+  years.forEach((yr,i)=>{
+    if(i===0||i===n-1||i===Math.floor((n-1)/2)){
+      xlab+=`<text class="curve-txt" x="${x(i).toFixed(1)}" y="${(H-padB+16)}" text-anchor="middle">${yr}年</text>`;
+    }
+  });
+  // 端点の値ラベル（最大伸びしろ線の終点・現スキル線の終点）
+  const endNow=now[n-1], endMax=max[n-1];
+  const dots=arr=>arr.map((v,i)=>(i===0||i===n-1)?`<circle class="curve-dot${arr===max?' max':''}" cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3.2"/>`:'').join('');
+  const svg=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="経験${sel.exp}年から7年先までの想定年収カーブ。実線は現スキルのまま、破線は最大伸びしろを習得した場合。いずれも本ツール推定の外挿。">`
+    + grid
+    + `<line class="curve-axis" x1="${padL}" y1="${padT}" x2="${padL}" y2="${H-padB}"/>`
+    + `<line class="curve-axis" x1="${padL}" y1="${H-padB}" x2="${W-padR}" y2="${H-padB}"/>`
+    + (premMax>prem+1e-9?`<polyline class="curve-line max" points="${pts(max)}"/>`:'')
+    + `<polyline class="curve-line" points="${pts(now)}"/>`
+    + (premMax>prem+1e-9?dots(max):'')
+    + dots(now)
+    + `<text class="curve-txt val" x="${(x(n-1)-2).toFixed(1)}" y="${(y(endNow)-7).toFixed(1)}" text-anchor="end">${fmt(endNow)}万</text>`
+    + (premMax>prem+1e-9?`<text class="curve-txt val" x="${(x(n-1)-2).toFixed(1)}" y="${(y(endMax)-7).toFixed(1)}" text-anchor="end" style="fill:var(--accent)">${fmt(endMax)}万</text>`:'')
+    + `</svg>`;
+  host.innerHTML=svg;
+  // 凡例
+  const lg=$('curvelegend'); if(lg){
+    const capPct=Math.round(D.model.premCap*100);
+    let html=`<span class="cl-item"><span class="cl-swatch"></span>現スキルのまま（${sel.exp}→${years[n-1]}年で <b>${fmt(now[n-1])}万</b>）</span>`;
+    if(premMax>prem+1e-9){
+      html+=`<span class="cl-item"><span class="cl-swatch max"></span>最大伸びしろ習得（加点上限+${capPct}%到達時 <b>${fmt(max[n-1])}万</b>）</span>`;
+    } else {
+      html+=`<span class="cl-item" style="color:#9aa6c8">スキル加点は既に上限(+${capPct}%)。破線は現スキル線と一致するため省略。</span>`;
+    }
+    lg.innerHTML=html;
+  }
+}
+
+/* ===== Batch5-6：目標年収の逆算（貪欲法） =====
+   ①未取得スキルを skillPrem 降順で premCap まで積み、到達できるか判定。
+   ②届かなければ経験+N年で baseByExp の伸びを使い到達年数を逆算。
+   ③それでも届かなければ企業タイプ（companies.mul の最大）変更でも判定し、最終的に誠実に「届きにくい」と返す。 */
+function renderTargetBack(base, prem, premRaw){
+  const el=$('targetbox'); if(!el) return;
+  const T=targetVal();
+  if(!T){ el.style.display='none'; el.innerHTML=''; return; }
+  el.classList.remove('reach','miss');
+  const rm=D.model.roleMul[sel.role]||1;
+  const cap=D.model.premCap;
+  const curMid=base*(1+prem);   // = baseByExp(exp)*roleMul*(1+実効加点)
+  // 既に到達済み
+  if(curMid>=T-0.5){
+    el.classList.add('reach');
+    el.innerHTML=`<div class="tb-head"><span aria-hidden="true">🎯</span>目標 <span class="tb-amt">${fmt(T)}万</span> は現条件で到達済み（想定中央 ${fmt(curMid)}万）</div>`
+      +`<span class="tb-cav">※本ツール推定の想定中央値。実オファーは交渉・評価で変動します。</span>`;
+    el.style.display=''; return;
+  }
+  // ①スキル積み増し（未取得を skillPrem 降順で premCap まで）
+  const missing=Object.keys(D.model.skillPrem).filter(k=>!sel.skills.has(k))
+    .sort((a,b)=>(D.model.skillPrem[b]||0)-(D.model.skillPrem[a]||0));
+  let acc=Math.min(premRaw,cap);           // 現在の実効加点（cap 内）
+  const picked=[];
+  for(const k of missing){
+    if(acc>=cap-1e-9) break;
+    if(base*(1+Math.min(acc,cap))>=T-0.5) break;
+    acc=Math.min(acc+(D.model.skillPrem[k]||0), cap);
+    picked.push(k);
+    if(base*(1+acc)>=T-0.5) break;
+  }
+  const reachBySkill = base*(1+Math.min(acc,cap)) >= T-0.5;
+  if(reachBySkill && picked.length){
+    const names=picked.map((k,i)=>`<b>${i+1}.${esc(skillMeta[k]?skillMeta[k].label:k)}</b>`).join(' ＋ ');
+    const newMid=base*(1+Math.min(acc,cap)); const gain=Math.round(newMid-curMid);
+    el.classList.add('reach');
+    el.innerHTML=`<div class="tb-head"><span aria-hidden="true">🎯</span>目標 <span class="tb-amt">${fmt(T)}万</span> への最短ルート</div>`
+      +`次を獲得すると到達：${names}（中央 +${fmt(gain)}万・本ツール推定）`
+      +`<span class="tb-cav">※貪欲法でスキル加点を上限+${Math.round(cap*100)}%まで積んだ試算。実オファーは交渉・評価で変動します。</span>`;
+    el.style.display=''; return;
+  }
+  // スキルを上限まで積んだ場合の中央値（ここから先は経験・企業で詰める）
+  const midSkillMax=base*(1+cap);
+  const skillNote = picked.length
+    ? `スキルを上限(+${Math.round(cap*100)}%)まで積んでも ${fmt(midSkillMax)}万`
+    : `現スキルのみでは ${fmt(curMid)}万`;
+  // ②経験+N年（最大伸びしろ習得＝premMax 前提で、到達に必要な追加年数を baseByExp で逆算）
+  let needYears=null;
+  for(let add=1; add<=20; add++){
+    const y=Math.min(20, sel.exp+add);
+    const m=baseByExp(y)*rm*(1+cap);
+    if(m>=T-0.5){ needYears=add; break; }
+    if(y>=20) break;
+  }
+  // ③企業タイプ変更（最も高い mul の企業に乗る＝最大伸びしろ習得時）
+  const bestMul=Math.max(...(D.companies||[{mul:1}]).map(c=>c.mul||1));
+  const bestCo=(D.companies||[]).find(c=>c.mul===bestMul);
+  const reachByCompany = midSkillMax*bestMul >= T-0.5;
+
+  el.classList.add('miss');
+  let body=`<div class="tb-head"><span aria-hidden="true">🧭</span>目標 <span class="tb-amt">${fmt(T)}万</span> は現条件では推定上 届きにくい</div>`;
+  body+=`<span style="display:block;color:#cdd7f5">${skillNote}（目標まで あと約 ${fmt(Math.max(0,T-midSkillMax))}万）。次のいずれかが必要：</span>`;
+  body+='<ol>';
+  if(needYears!=null) body+=`<li>経験 <b>+${needYears}年</b>（最大スキル習得前提・想定中央が目標に到達）</li>`;
+  else body+=`<li>経験を重ねても本職種の推定カーブ（最大20年）では単独到達は難しい</li>`;
+  if(reachByCompany && bestCo) body+=`<li>より高単価の企業タイプ（<b>${esc(bestCo.name)}</b>・市場 ${esc(bestCo.range)}）へ移る（最大スキル習得時に到達域）</li>`;
+  else body+=`<li>職種軸の変更（より単価の高い職種・領域への転換）`+`</li>`;
+  body+='</ol>';
+  body+=`<span class="tb-cav">※baseByExp / roleMul / companies.mul を使った本ツール推定の逆算。盛らず「届きにくい」と正直に提示します。実オファーは交渉・評価で変動します。</span>`;
+  el.innerHTML=body;
+  el.style.display='';
+}
+
 function render(){
-  const {lo,mid,hi,prem}=personalRange();
+  // render は innerHTML を総入れ替えするため、開いている出典ポップが古い DOM を指したまま
+  // 取り残される参照ずれを防ぐ。冒頭で開いているポップを畳む（focus 復帰はしない＝入力操作の流れを邪魔しない）。
+  if(pop) closePop(false);
+  const {lo,mid,hi,prem,premRaw,capped,base}=personalRange();
   const smid=$('salmid');
+  renderSkillSum(prem,premRaw,capped);
   smid.innerHTML=fmt(mid)+'<span class="unit">万円</span>';
   $('salrange').textContent='想定レンジ '+fmt(lo)+'〜'+fmt(hi)+'万円 / 年';
   $('examplenote').style.display = touched ? 'none' : '';
@@ -551,15 +1337,34 @@ function render(){
     return `<span>${Math.round(val)}${plus}</span>`;
   }).join('');
   $('benchticks').innerHTML=D.benchmarks.map(b=>
-    `<span class="btick" style="left:${toPct(b.avg)}%" title="${b.role} 市場平均 ${b.avg}万"></span>`).join('');
+    `<span class="btick" style="left:${toPct(b.avg)}%" title="${esc(b.role)} 市場平均 ${b.avg}万"></span>`).join('');
   const l=toPct(lo), w=Math.max(6,toPct(hi)-toPct(lo));
   const f=$('fill'); f.style.left=l+'%'; f.style.width=w+'%';
-  $('midmark').style.left=toPct(mid)+'%';   // 中央値マーカー
-  // スキル加点：増減を ▲▼ で示す
+  const midPct=toPct(mid);
+  $('midmark').style.left=midPct+'%';   // 中央値マーカー
+  // バー直下の可視ラベル（title 非依存）：▼直下に「あなた」、各市場平均線下に職種略称＋「市場平均」。
+  // ラベルが「あなた」と重なる/近接するものは間引いて潰れを防ぐ（左右 6% 以内は非表示）。
+  const shortRole=r=>{ const s=String(r||''); return s.length>7 ? s.slice(0,6)+'…' : s; };
+  const bl=[`<span class="you" style="left:${midPct}%">▼あなた</span>`];
+  D.benchmarks.forEach(b=>{
+    const p=toPct(b.avg);
+    if(Math.abs(p-midPct)<6) return;   // 「あなた」ラベルと衝突する近接ティックはラベル省略（線は残る）
+    bl.push(`<span class="bl-mkt" style="left:${p}%">${esc(shortRole(b.role))}・市場平均</span>`);
+  });
+  $('barlabels').innerHTML=bl.join('');
+  // スキル加点：増減を ▲▼ で示す。上限(premCap)到達時は正直に開示する。
   let arrow='';
   if(prevPrem!==null && Math.abs(prem-prevPrem)>1e-9) arrow = prem>prevPrem ? '<span class="up-arrow">▲</span>' : '<span class="down-arrow">▼</span>';
-  $('posnote').innerHTML = prem>0 ? (arrow+'スキル加点 +'+Math.round(prem*100)+'%') : '';
+  const capPct=Math.round(D.model.premCap*100);
+  if(capped){
+    $('posnote').innerHTML = arrow+'スキル加点 +'+Math.round(prem*100)+'% <span class="capnote" title="選択スキルの加点合計（+'+Math.round(premRaw*100)+'%）が上限+'+capPct+'%を超えたため、超過分は中央値に反映されていません">／スキル加点は上限(+'+capPct+'%)に到達</span>';
+  } else {
+    $('posnote').innerHTML = prem>0 ? (arrow+'スキル加点 +'+Math.round(prem*100)+'%') : '';
+  }
   prevMid=mid; prevPrem=prem;
+
+  // 同年代の実測レンジ（ageBands）。経験年数→年代は保守的マッピング（経験≠年齢を明示）。
+  renderAgeRange(mid);
 
   const rows=D.companies.map(c=>{
     const cmid=mid*c.mul, clo=lo*c.mul, chi=hi*c.mul;
@@ -571,50 +1376,109 @@ function render(){
   }).sort((a,b)=>b.cmid-a.cmid);
   const fitClass=s=>s>=3?'fit-high':s>=2?'fit-mid':'fit-low';
   const fitText=s=>s>=3?'非常に高い':s>=2?'高い':s>=1?'中':'要強化';
+  // 640px 以下では thead を display:none にして td を縦カード化するため、列見出しが SR に届かない。
+  // ::before の content（=data-label）は SR が読まない実装が多いので、tr に企業名の aria-label を、
+  // 各値セルに実 DOM の sr-only ラベルを併設して意味構造を復元する（WCAG 1.3.1）。
+  // Batch5-3：各企業で「効く」未取得スキル（c.fit のうち未取得かつ skillPrem 存在）を最大2つ小タグ表示。
+  // Batch5-2：その企業の想定レンジ下限を年収条件にした求人検索リンク（クリックで新規タブ・自動送信ではない）。
+  const gapTagsFor=c=>{
+    const gaps=(c.fit||[]).filter(k=>!sel.skills.has(k) && D.model.skillPrem[k]!=null)
+      .map(k=>skillMeta[k]?skillMeta[k].label:k).slice(0,2);
+    if(!gaps.length) return '';
+    return `<div class="gap-tags"><span class="gap-lead">この企業で効く:</span>`
+      +gaps.map(g=>`<span class="gap-tag">${esc(g)}</span>`).join('')+`</div>`;
+  };
+  const jobLinkFor=c=>{
+    const minMan=Math.round(c.clo/10)*10;   // 想定下限を10万単位に丸めた「年収◯万以上」
+    return `<a class="job-link" href="#" data-job="1" data-min="${minMan}" role="button"`
+      +` aria-label="${esc(roleLabel[sel.role]||'')}の求人を年収${minMan}万以上で探す（新規タブ・自動送信なし）">`
+      +`<span aria-hidden="true">🔎</span> この条件で求人を探す（${minMan}万〜）</a>`;
+  };
   $('companies').innerHTML=rows.map((c,i)=>`
-    <tr${i===0?' class="toprow"':''}>
-      <td class="cell-name"><b>${c.name}</b><span class="ex">${c.ex}</span></td>
-      <td class="mkt cell-stack" data-label="市場レンジ">${c.range}<br>${srcBadge(c.srcId)}</td>
-      <td class="sal cell-stack" data-label="あなたの想定">${fmt(c.clo)}–${fmt(c.chi)}<br><span class="ex">中央 ${fmt(c.cmid)}万</span><br>${tierBadgeInline('tool')}</td>
-      <td data-label="相性"><span class="pill ${fitClass(c.fitScore)}">${fitText(c.fitScore)}</span></td>
+    <tr${i===0?' class="toprow"':''} aria-label="${esc(c.name)}">
+      <td class="cell-name"><b>${esc(c.name)}</b><span class="ex">${esc(c.ex)}</span></td>
+      <td class="mkt cell-stack" data-label="市場レンジ"><span class="td-label sr-only">市場レンジ：</span>${esc(c.range)}<br>${srcBadge(c.srcId)}</td>
+      <td class="sal cell-stack" data-label="あなたの想定"><span class="td-label sr-only">あなたの想定：</span>${fmt(c.clo)}–${fmt(c.chi)}<br><span class="ex">中央 ${fmt(c.cmid)}万</span><br>${tierBadgeInline('tool')}</td>
+      <td data-label="相性"><span class="td-label sr-only">相性：</span><span class="pill ${fitClass(c.fitScore)}">${fitText(c.fitScore)}</span></td>
+      <td class="cell-gap" data-label="次の一歩"><span class="td-label sr-only">次の一歩：</span>${gapTagsFor(c)}${jobLinkFor(c)}</td>
     </tr>`).join('');
 
-  // P2-6 未取得スキルを「職種・志向の適合係数」で重み付けして並べ替え（表示する加点%は実値のまま）
-  const missing=Object.keys(D.model.skillPrem).filter(k=>!sel.skills.has(k)).sort((a,b)=>skillWeight(b)-skillWeight(a));
+  // スキル k を追加したときの「実効ゲイン」（中央値の実増分・万円）。
+  // premCap 飽和時は加点が頭打ちになるため、追加してももう増えないなら 0 を返す（誠実さの核心）。
+  const effGain=k=>{
+    const newPrem=Math.min(premRaw+(D.model.skillPrem[k]||0), D.model.premCap);
+    return Math.max(0, base*(newPrem-prem));
+  };
+  // 本ツール推定の上限的目安であることを明示する gainTxt。base×(1+加点)−現在 の内訳を title で開示。
+  const gainTxtFor=k=>{
+    const g=effGain(k);
+    if(g<0.5) return `<span class="capnote" title="加点合計が上限+${Math.round(D.model.premCap*100)}%に達しているため、このスキルを追加しても中央値は増えません">（現在は上限のため反映されません）</span>`;
+    const newPrem=Math.min(premRaw+(D.model.skillPrem[k]||0), D.model.premCap);
+    const ttl=`算出: 基準${fmt(base)}万 ×(1+${Math.round(newPrem*100)}%) − 現在${fmt(mid)}万 ＝ +${fmt(g)}万（本ツール推定の上限的目安・実評価で変動）`;
+    return `<span title="${esc(ttl)}">中央 +${fmt(g)}万（本ツール推定の上限的目安・実評価で変動）</span>`;
+  };
 
-  // 最大伸びしろスキルを足したときの中央値ゲイン（理論値）
+  // P2-6 未取得スキルを「実効ゲイン降順 → 職種・志向の適合係数」で並べ替え。
+  // 上限到達で実効ゲイン 0 のスキルは下に沈み、煽らない。
+  const missing=Object.keys(D.model.skillPrem).filter(k=>!sel.skills.has(k))
+    .sort((a,b)=>{
+      const dg=effGain(b)-effGain(a);
+      if(Math.abs(dg)>0.5) return dg>0?1:-1;   // 実効ゲイン優先（同等なら次へ）
+      return skillWeight(b)-skillWeight(a);     // 同点は従来の適合係数
+    });
+
   const nextK=missing[0];
-  let gainTxt='';
-  if(nextK){
-    const baseMid=baseByExp(sel.exp)*D.model.roleMul[sel.role];
-    const newPrem=Math.min(prem+D.model.skillPrem[nextK], D.model.premCap);
-    const gain=Math.max(0, baseMid*(1+newPrem)-mid);
-    gainTxt=`中央 +${fmt(gain)}万（理論上）`;
-  }
+  const nextGainTxt = nextK ? gainTxtFor(nextK) : '';
 
   // P2-7 次の大台までのギャップ＋最短の一手
   const band=(Math.floor(mid/100)+1)*100;
   let gl=`次の大台 <b style="color:#dbe6ff">${fmt(band)}万円台</b>まで あと <b style="color:#dbe6ff">+${fmt(band-mid)}万</b>`;
-  if(nextK) gl+=`。最短の一手は「${skillMeta[nextK].label}」追加で ${gainTxt}`;
+  if(nextK){
+    if(effGain(nextK)>=0.5) gl+=`。最短の一手は「${esc(skillMeta[nextK].label)}」追加で ${nextGainTxt}`;
+    else gl+=`。<span class="capnote">主要スキルの加点は上限(+${Math.round(D.model.premCap*100)}%)に到達。次は実績の見せ方と年収交渉</span>`;
+  }
   $('gapline').innerHTML=gl;
 
   // 「あなたの次の一手」：相性最上位の企業（rows[0]）と最大伸びしろスキル（missing[0]）を接続
   const top=rows[0];
   let nextMove='<div class="nextmove"><div class="nm-head">あなたの次の一手</div>'
-    +`<div class="nm-step"><span class="nm-num">1</span><div>いま最も相性が高い：<b>${top.name}</b><span class="nm-amt">想定 中央${fmt(top.cmid)}万</span></div></div>`;
-  if(nextK){
-    nextMove+=`<div class="nm-step"><span class="nm-num">2</span><div>${roleLabel[sel.role]}のあなたが次に伸ばすなら：<b>${skillMeta[nextK].label}</b><span class="nm-amt">${gainTxt}</span></div></div>`;
+    +`<div class="nm-step"><span class="nm-num">1</span><div>いま最も相性が高い：<b>${esc(top.name)}</b><span class="nm-amt">想定 中央${fmt(top.cmid)}万</span></div></div>`;
+  if(nextK && effGain(nextK)>=0.5){
+    nextMove+=`<div class="nm-step"><span class="nm-num">2</span><div>${esc(roleLabel[sel.role])}のあなたが次に伸ばすなら：<b>${esc(skillMeta[nextK].label)}</b><span class="nm-amt">${nextGainTxt}</span></div></div>`;
   } else {
-    nextMove+=`<div class="nm-step"><span class="nm-num">2</span><div>主要スキルは網羅済み。<b>実績の見せ方と年収交渉</b>が次の伸びしろです。</div></div>`;
+    nextMove+=`<div class="nm-step"><span class="nm-num">2</span><div>主要スキルの加点は上限(+${Math.round(D.model.premCap*100)}%)に到達。<b>実績の見せ方と年収交渉</b>が次の伸びしろです。</div></div>`;
   }
   nextMove+='</div>';
 
-  let html=missing.slice(0,5).map(k=>`
-    <div class="rec"><span class="ic">${skillMeta[k].icon}</span>
-      <div><b>${skillMeta[k].label}</b> を獲得<br><span class="ex">${skillMeta[k].advice}</span></div>
-      <span class="up">+${Math.round(D.model.skillPrem[k]*100)}%</span></div>`).join('');
-  if(!missing.length) html='<div class="rec"><span class="ic">🏆</span><div><b>主要スキルを網羅しています。</b><br><span class="ex">あとは実績の見せ方と交渉。外資・メガベンチャーのハイレンジ求人に直接応募する戦略が有効です。</span></div></div>';
+  let html=missing.slice(0,5).map(k=>{
+    const g=effGain(k), pct=Math.round(D.model.skillPrem[k]*100);
+    // 実効ゲイン 0（上限到達で反映されない）は「+%」で煽らず、注記で正直に出す。
+    const amt = g>=0.5
+      ? `<span class="up">+${fmt(g)}万</span>`
+      : `<span class="up" style="color:#8b96bd" title="加点合計が上限(+${Math.round(D.model.premCap*100)}%)に到達。追加しても中央値には反映されません">上限のため0</span>`;
+    const note = g>=0.5 ? `（加点 +${pct}%・本ツール推定）` : `（加点 +${pct}%だが現在は上限のため反映されません）`;
+    return `<div class="rec"><span class="ic" aria-hidden="true">${skillMeta[k].icon}</span>
+      <div><b>${esc(skillMeta[k].label)}</b> を獲得<br><span class="ex">${esc(skillMeta[k].advice)}</span><span class="ex" style="display:block">${note}</span></div>
+      ${amt}</div>`;
+  }).join('');
+  if(!missing.length) html='<div class="rec"><span class="ic" aria-hidden="true">🏆</span><div><b>主要スキルを網羅しています。</b><br><span class="ex">あとは実績の見せ方と交渉。外資・メガベンチャーのハイレンジ求人に直接応募する戦略が有効です。</span></div></div>';
   $('recs').innerHTML=nextMove+html;
+
+  // 入力変更を SR に1文で通知（aria-live=polite）。全表の冗長読み上げを避け、要点のみ。
+  // textContent で更新（HTML を入れない＝注入面を作らない）。
+  const nextMoveText = (nextK && effGain(nextK)>=0.5)
+    ? `次の一手は「${skillMeta[nextK].label}」の獲得`
+    : `次の一手は実績の見せ方と年収交渉`;
+  $('sr-summary').textContent =
+    `想定年収 中央${fmt(mid)}万円。最も相性が高いのは${top.name}（想定 中央${fmt(top.cmid)}万円）。${nextMoveText}。`;
+
+  // ===== Batch5：新機能の描画（各 setter は未入力時に自分で非表示にする＝既存表示を壊さない） =====
+  renderCurrentDiff(mid);                 // 1. 現年収比の差分
+  renderTargetBack(base, prem, premRaw);  // 6. 目標年収の逆算
+  renderActionMoves();                    // 4. 活動の打ち手
+  renderCurve(prem);                      // 5. キャリア年収カーブ
+  // 2. 求人検索リンクのサンプル開示（職種＋スキル＋年収条件が URL に載ることを明示）
+  const qs=$('jobquery-sample'); if(qs) qs.textContent=jobQuery(Math.round(lo/10)*10);
 
   writeHash();   // 現在の条件を共有可能URL（ハッシュ）に反映（replaceState・送信なし）
 }
@@ -622,54 +1486,144 @@ function render(){
 /* ===== 出典バッジのポップオーバー =====
    hover の title だけだとモバイル(PWA)で根拠がゼロ伝達になるため、
    タップ/クリックで tier・説明・出典・時点・リンクを出すポップを併設する。 */
-let pop=null, popBtn=null;
-function closePop(){
-  if(pop){ pop.remove(); pop=null; }
+let pop=null, popBtn=null, popTrigger=null;
+// 単純な Tab トラップ：dialog 内のフォーカス可能要素間でループさせる（WCAG 2.4.3 / 2.1.2）。
+function popTrap(e){
+  if(e.key!=='Tab' || !pop) return;
+  const f=pop.querySelectorAll('a[href],button,[tabindex]:not([tabindex="-1"])');
+  if(!f.length){ e.preventDefault(); pop.focus(); return; }
+  const first=f[0], last=f[f.length-1], active=document.activeElement;
+  if(e.shiftKey){
+    if(active===first || active===pop){ e.preventDefault(); last.focus(); }
+  } else {
+    if(active===last){ e.preventDefault(); first.focus(); }
+  }
+}
+function closePop(restoreFocus){
+  // scroll の once リスナーが未発火のまま残らないよう明示除去（既に発火済みなら no-op）。
+  window.removeEventListener('scroll', closePopOnScroll);
+  if(pop){ pop.removeEventListener('keydown',popTrap); pop.remove(); pop=null; }
   if(popBtn){ popBtn.setAttribute('aria-expanded','false'); popBtn=null; }
+  const trg=popTrigger; popTrigger=null;
+  if(restoreFocus && trg && document.contains(trg)){ try{ trg.focus(); }catch(e){} }
 }
 function openPop(btn){
   closePop();
+  popTrigger=btn;   // フォーカス復帰先（閉じたとき元のバッジへ戻す）
   const t = btn.dataset.src ? D.tiers[D.sources[btn.dataset.src].tier] : D.tiers[btn.dataset.tier];
-  let html = `<div class="pop-tier">${tierMark(t)}<b>${t.label}</b></div><div class="pop-desc">${t.desc}</div>`;
+  let html = `<button type="button" class="pop-close" aria-label="閉じる">×</button>`
+    + `<div class="pop-tier">${tierMark(t)}<b>${esc(t.label)}</b></div><div class="pop-desc">${esc(t.desc)}</div>`;
   if(btn.dataset.src){
     const s=D.sources[btn.dataset.src];
-    html += `<div class="pop-src"><span>出典</span>${s.name}</div>`
-          + `<div class="pop-date"><span>時点</span>${s.date}</div>`
-          + `<a class="pop-link" href="${s.url}" target="_blank" rel="noopener">出典ページを開く ↗</a>`;
+    html += `<div class="pop-src"><span>出典</span>${esc(s.name)}</div>`
+          + `<div class="pop-date"><span>出典年</span>${esc(fmtSrcDate(s.date))}</div>`
+          + `<a class="pop-link" href="${safeUrl(s.url)}" target="_blank" rel="noopener">出典ページを開く ↗</a>`;
   } else {
     html += `<div class="pop-note">＝この値は本ツールが市場データから計算した推定。実測値ではありません。</div>`;
   }
   pop=document.createElement('div');
-  pop.className='src-pop'; pop.setAttribute('role','dialog'); pop.setAttribute('aria-label',t.label+'の説明');
+  pop.className='src-pop'; pop.setAttribute('role','dialog'); pop.setAttribute('aria-modal','true');
+  pop.setAttribute('aria-label',t.label+'の説明'); pop.setAttribute('tabindex','-1');
   pop.innerHTML=html;
   document.body.appendChild(pop);
-  // 位置決め（ビューポート内にクランプ）
-  const r=btn.getBoundingClientRect();
-  pop.style.top=(r.bottom+window.scrollY+6)+'px';
-  const pw=pop.offsetWidth, vw=document.documentElement.clientWidth;
-  let left=r.left+window.scrollX;
-  left=Math.min(left, window.scrollX+vw-pw-10);
-  left=Math.max(window.scrollX+8, left);
-  pop.style.left=left+'px';
+  // 640px 以下はボトムシート（CSS で画面下部固定）。座標計算をスキップして取り残されない。
+  const isSheet = window.matchMedia('(max-width:640px)').matches;
+  if(isSheet){
+    pop.classList.add('sheet');   // 位置は CSS（position:fixed; bottom:0）が決める
+  } else {
+    // 位置決め（ビューポート内にクランプ）
+    const r=btn.getBoundingClientRect();
+    pop.style.top=(r.bottom+window.scrollY+6)+'px';
+    const pw=pop.offsetWidth, vw=document.documentElement.clientWidth;
+    let left=r.left+window.scrollX;
+    left=Math.min(left, window.scrollX+vw-pw-10);
+    left=Math.max(window.scrollX+8, left);
+    pop.style.left=left+'px';
+  }
   btn.setAttribute('aria-expanded','true'); popBtn=btn;
+  // フォーカスをポップ本体へ移し、Tab トラップを張る
+  pop.addEventListener('keydown',popTrap);
+  pop.querySelector('.pop-close').addEventListener('click',()=>closePop(true));
+  pop.focus();
+  // モバイルでスクロールしてもポップが宙に残らないよう、最初のスクロールで閉じる。
+  // ボトムシートは固定位置なので閉じる必要は薄いが、デスクトップ含め一貫した挙動にする。
+  window.addEventListener('scroll', closePopOnScroll, {passive:true, once:true});
 }
+// scroll の once リスナー用ラッパ（closePop は引数で focus 復帰するため、scroll では復帰しない）。
+function closePopOnScroll(){ if(pop) closePop(false); }
 document.addEventListener('click',e=>{
   const btn=e.target.closest('.src-badge');
   if(btn && (btn.dataset.src||btn.dataset.tier)){
     e.preventDefault(); e.stopPropagation();
-    (btn.getAttribute('aria-expanded')==='true') ? closePop() : openPop(btn);
+    (btn.getAttribute('aria-expanded')==='true') ? closePop(true) : openPop(btn);
     return;
   }
+  if(e.target.closest('.pop-close')) return;   // × は専用ハンドラで閉じる
   if(!e.target.closest('.src-pop')) closePop();
 });
-document.addEventListener('keydown',e=>{ if(e.key==='Escape') closePop(); });
-window.addEventListener('resize',closePop);
+// Batch5-2：求人検索リンク。クリックでその企業レンジ下限を年収条件にした検索URLを新規タブで開く。
+// 既定の転職サイトは searchTargets[0]（自動送信ではなく検索ページを開くだけ）。
+document.addEventListener('click',e=>{
+  const a=e.target.closest('a[data-job]');
+  if(!a) return;
+  e.preventDefault();
+  const min=parseInt(a.dataset.min,10)||0;
+  const q=jobQuery(min);
+  const tgt=searchTargets[0];
+  try{ window.open(tgt.build(q), '_blank', 'noopener'); }
+  catch(err){ flashMsg('検索ページを開けませんでした'); }
+});
+document.addEventListener('keydown',e=>{ if(e.key==='Escape' && pop) closePop(true); });
+window.addEventListener('resize',()=>closePop());
 // 同一タブでのURL貼り替え・ブラウザの戻る/進むでも状態を復元（writeHashはreplaceStateなので発火しない＝ループしない）
 window.addEventListener('hashchange',()=>{ if(applyHash()){ touched=true; syncUIFromSel(); render(); } });
 
 // 起動（全ての宣言の後で呼ぶ）
 if(!D){ $('err').style.display='block'; }
 else { boot(); }
+
+/* ===== PWA: Service Worker 登録 ＋ 更新検知トースト =====
+   完全クライアントサイド・外部送信なし。登録失敗（file:// 直開き等）でも
+   ツール本体は動くよう try/catch で握りつぶす。 */
+let pwaToastShown=false;
+function showUpdateToast(onReload){
+  if(pwaToastShown) return; pwaToastShown=true;
+  const t=document.createElement('div');
+  t.className='pwa-toast'; t.setAttribute('role','status'); t.setAttribute('aria-live','polite');
+  t.innerHTML='<span><b>新しいデータがあります</b>—タップで再読込</span>'
+    +'<button type="button" class="pt-reload">再読込</button>'
+    +'<button type="button" class="pt-x" aria-label="閉じる">×</button>';
+  document.body.appendChild(t);
+  const reload=()=>{ try{ onReload&&onReload(); }catch(e){} location.reload(); };
+  t.querySelector('.pt-reload').addEventListener('click',reload);
+  t.querySelector('.pt-x').addEventListener('click',()=>{ t.remove(); });
+}
+(function registerSW(){
+  if(!('serviceWorker' in navigator)) return;
+  try{
+    navigator.serviceWorker.register('./sw.js').then(reg=>{
+      // 既に待機中の SW があれば（前回ロード中に更新が来ていた場合）即トースト。
+      if(reg.waiting && navigator.serviceWorker.controller){
+        showUpdateToast(()=>{ try{ reg.waiting.postMessage({type:'SKIP_WAITING'}); }catch(e){} });
+      }
+      // 新しい SW が見つかったら、インストール完了（待機状態）でトースト。
+      reg.addEventListener('updatefound',()=>{
+        const sw=reg.installing; if(!sw) return;
+        sw.addEventListener('statechange',()=>{
+          // controller があれば＝既存版が動作中の「更新」。初回インストールではトーストを出さない。
+          if(sw.state==='installed' && navigator.serviceWorker.controller){
+            showUpdateToast(()=>{ try{ sw.postMessage({type:'SKIP_WAITING'}); }catch(e){} });
+          }
+        });
+      });
+    }).catch(()=>{ /* 登録失敗はツール動作に影響させない */ });
+    // 新しい SW が制御を奪ったら一度だけ自動リロード（トーストの再読込と二重にならないようガード）。
+    let reloaded=false;
+    navigator.serviceWorker.addEventListener('controllerchange',()=>{
+      if(reloaded) return; reloaded=true; location.reload();
+    });
+  }catch(e){ /* SW 周りの例外は無視（本体は動く） */ }
+})();
 </script>
 </body>
 </html>
