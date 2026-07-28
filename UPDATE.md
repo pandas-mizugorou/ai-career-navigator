@@ -79,16 +79,40 @@
 
 ---
 
-## 自動更新（月次・GitHub Actions）
+## 自動更新（月次）
 
-このランブックは **月 1 回 自動でも実行される**。`.github/workflows/monthly-update.yml` が Claude Code（Opus）を起動し、上記の手順に従って WebSearch 再調査 → `data.js` を書き換える。
+このランブックは **月 1 回 自動でも実行される**。上記の手順に従って Web 検索で再調査し `data.js` を書き換える。
+
+> **移行中（2026-07-29 時点）**: 実行系を GitHub Actions から手元へ移す作業が進行中で、**両方が用意されている**。
+> 公式の Codex GitHub Action は `OPENAI_API_KEY`（従量課金）が必須で ChatGPT サブスクの認証を渡せないため、
+> 追加課金なしで回すにはローカル実行しかない。
+>
+> | 実行系 | 実体 | 状態 |
+> |---|---|---|
+> | GitHub Actions（旧） | `.github/workflows/monthly-update.yml`（`claude-code-action`） | **有効**。Claude Code 撤去まで動く |
+> | ローカル（新） | `scripts/Invoke-MonthlyUpdate.ps1`（`codex exec`） | タスク `\Agents\AiCareerNavigatorMonthly` に**無効で登録済み** |
+>
+> **両方を同時に動かさないこと。** 同月に二重で `data.js` を書き換えて push が競合する。
+> 切り替えるときは「Actions を無効化 → タスクを Enable」の順で行う。
+>
+> ```powershell
+> # ローカルで手動実行
+> pwsh -File scripts\Invoke-MonthlyUpdate.ps1 -SkipPush   # 検証まで（公開しない）
+> pwsh -File scripts\Invoke-MonthlyUpdate.ps1             # 検証に通れば公開
+> pwsh -File scripts\Invoke-MonthlyUpdate.ps1 -Force      # 当月更新済みでも再実行
+> pwsh -File scripts\Invoke-MonthlyUpdate.ps1 -DryRun     # LLM を起動せず配線だけ確認
+> ```
+>
+> ローカル版のトリガーは「毎日 6:00 起動 ＋ 当月更新済みなら何もしない」にしてある。
+> 月次トリガーだとその日 PC が落ちていたときに丸ごと 1 か月飛ぶため。
 
 - **スケジュール**：毎月初（JST 早朝着）。GitHub Actions の遅延に備え多重 cron + 冪等ガード（当月分が既にあれば skip）。
 - **検証ゲート（push 前の最後の砦）**：`scripts/validate-data.mjs`（依存ゼロ Node）が、構文・必須キー・出典参照（srcId→sources / tier→tiers）・数値妥当域・`last_updated` の当日性・`model{}` の前回比乖離（±30%）・**index.html との UI 整合**を検査する。**合格時のみ main に push（即公開）**。不合格なら push せず GitHub Issue で通知する（壊れたデータは本番に出ない）。
 - **自己修復**：ランナー障害等で失敗したら `retry-failed.yml` が 1 回だけ自動再実行する。
 - **手動実行**：Actions タブ →「Monthly Data Update」→ Run workflow（当月分が既にあるときは force=true）。
 - **ローカル検証**：`node scripts/validate-data.mjs --html index.html`（レポートのみ）/ `--strict`（ERROR で exit 1）。
-- **初回のみの手作業**：リポジトリの Settings → Secrets and variables → Actions に `CLAUDE_CODE_OAUTH_TOKEN` を登録（`claude setup-token` で発行、または ai-daily-digest と同じトークンを流用）。
+- **初回のみの手作業（GitHub Actions 側のみ）**：リポジトリの Settings → Secrets and variables → Actions に `CLAUDE_CODE_OAUTH_TOKEN` を登録（`claude setup-token` で発行、または ai-daily-digest と同じトークンを流用）。
+  **ローカル実行に切り替えたあとはこの Secret は不要**（Codex は ChatGPT サブスクの認証を `~/.codex/auth.json` から使う）。
 
 ### 調査内容や項目を変えたいとき（重要）
 
