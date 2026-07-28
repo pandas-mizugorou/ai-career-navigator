@@ -83,17 +83,25 @@
 
 このランブックは **月 1 回 自動でも実行される**。上記の手順に従って Web 検索で再調査し `data.js` を書き換える。
 
-> **移行中（2026-07-29 時点）**: 実行系を GitHub Actions から手元へ移す作業が進行中で、**両方が用意されている**。
-> 公式の Codex GitHub Action は `OPENAI_API_KEY`（従量課金）が必須で ChatGPT サブスクの認証を渡せないため、
-> 追加課金なしで回すにはローカル実行しかない。
+> **現在このランブックの自動実行は休止している（2026-07-29）**。
+>
+> 実行系を GitHub Actions からローカルへ切り替えたが、再開の指示があるまで両方とも止めてある。
+> 手元で実行する分には下記コマンドでいつでも動く。
 >
 > | 実行系 | 実体 | 状態 |
 > |---|---|---|
-> | GitHub Actions（旧） | `.github/workflows/monthly-update.yml`（`claude-code-action`） | **有効**。Claude Code 撤去まで動く |
-> | ローカル（新） | `scripts/Invoke-MonthlyUpdate.ps1`（`codex exec`） | タスク `\Agents\AiCareerNavigatorMonthly` に**無効で登録済み** |
+> | GitHub Actions（旧） | `.github/workflows/monthly-update.yml`（`claude-code-action`） | `disabled_manually`。**役目を終えた**（Claude Code 撤去時にファイルごと削除する） |
+> | ローカル（新） | `scripts/Invoke-MonthlyUpdate.ps1`（`codex exec`） | タスク `\Agents\AiCareerNavigatorMonthly` に登録済み・**Disabled** |
 >
-> **両方を同時に動かさないこと。** 同月に二重で `data.js` を書き換えて push が競合する。
-> 切り替えるときは「Actions を無効化 → タスクを Enable」の順で行う。
+> 公式の Codex GitHub Action は `OPENAI_API_KEY`（従量課金）が必須で ChatGPT サブスクの認証を
+> 渡せないため、追加課金なしで回すにはローカル実行しかない。それが切り替えた理由。
+>
+> **自動実行を再開するとき**は次のコマンドひとつ。GitHub Actions 側は無効のままにしておくこと
+> （両方動くと同月に二重で `data.js` を書き換えて push が競合する）。
+>
+> ```powershell
+> Enable-ScheduledTask -TaskName AiCareerNavigatorMonthly -TaskPath '\Agents\'
+> ```
 >
 > ```powershell
 > # ローカルで手動実行
