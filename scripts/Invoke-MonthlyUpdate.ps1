@@ -228,8 +228,10 @@ try {
         exit 0
     }
     & git add data.js
-    & git -c user.name='ookawa' -c user.email='sguraion@ai-lab-o.com' `
-        commit -q -m "monthly data update: $dateStr" 2>&1 | ForEach-Object { Write-Log ("git: " + $_) }
+    # コミット作者は指定しない。~/.gitconfig の includeIf が personal 配下に
+    # noreply アドレスを割り当てているので、ここで上書きすると
+    # 会社メールが public リポに出てしまう。
+    & git commit -q -m "monthly data update: $dateStr" 2>&1 | ForEach-Object { Write-Log ("git: " + $_) }
     if ($SkipPush) {
         Write-Log '-SkipPush のため push しない'
         exit 0
